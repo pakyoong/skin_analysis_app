@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">skin_analysis_app</string>
+    <string name="an_image">an image</string>
+    <string name="image_view">Image View</string>
+    <string name="parsing">Parsing</string>
+    <string name="run_model">Running the model...</string>
+    <string name="album">Select Picture</string>
+    <string name="camera">Camera</string>
+    <string name="check">확인</string>
+    <string name="change">이름 변경</string>
+    <string name="camera_mode_none">None</string>
+    <string name="camera_mode_auto">Auto</string>
+    <string name="camera_mode_bokeh">Bokeh</string>
+    <string name="camera_mode_hdr">HDR</string>
+    <string name="camera_mode_night">Night</string>
+    <string name="camera_mode_face_retouch">Face Retouch</string>
+
+    <string name="camera_permissions_request_with_rationale">You can\'t use camera extensions unless CameraX Extensions has access to your camera.</string>
+    <string name="camera_permissions_request">Allow CameraX Extensions access to your camera to try camera extensions.</string>
+    <string name="guide_text">가이드라인에 얼굴을 맞춰 사진을 촬영해주세요</string>
+    <string name="camera_permissions_action">Turn On</string>
+    <string name="enter_your_name_hint">1. 이름을 입력해 주세요.</string>
 </resources>
