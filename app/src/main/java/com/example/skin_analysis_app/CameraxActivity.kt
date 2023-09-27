@@ -2,7 +2,9 @@ package com.example.skin_analysis_app
 
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,7 +36,7 @@ import com.example.skin_analysis_app.viewstate.PostCaptureScreenViewState
  * button will capture a photo and display the photo.
  */
 class CameraxActivity : AppCompatActivity() {
-
+    private var capturedImageUri: Uri? = null
     private lateinit var userName: String
     private val extensionName = mapOf(
         ExtensionMode.AUTO to R.string.camera_mode_auto,
@@ -137,6 +139,14 @@ class CameraxActivity : AppCompatActivity() {
                     CameraUiAction.RequestPermissionClick -> {
                         requestPermissionsLauncher.launch(Manifest.permission.CAMERA)
                     }
+                    CameraUiAction.analyzeImageButtonClick ->{
+                        // analyzeImageButton가 클릭되면 ParsingActivity로 이미지의 URI를 전달합니다.
+                        capturedImageUri?.let { uri ->
+                            val intent = Intent(this@CameraxActivity, ParsingActivity::class.java)
+                            intent.putExtra("image_uri", uri.toString())
+                            startActivity(intent)
+                        }
+                    }
                     is CameraUiAction.Focus -> {
                         cameraExtensionsViewModel.focus(action.meteringPoint)
                     }
@@ -191,6 +201,7 @@ class CameraxActivity : AppCompatActivity() {
                                 .updatePostCaptureScreen {
                                     val uri = state.outputResults.savedUri
                                     if (uri != null) {
+                                        capturedImageUri = uri // 캡쳐된 이미지의 URI를 저장합니다.
                                         PostCaptureScreenViewState.PostCaptureScreenVisibleViewState(
                                             uri
                                         )

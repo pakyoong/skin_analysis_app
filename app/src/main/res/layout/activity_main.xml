@@ -6,23 +6,11 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="100dp"
-        android:text="분석할 이미지를 가져올\n 방법을 선택해주세요"
-        android:textSize="30dp"
-        app:layout_constraintBottom_toTopOf="@+id/cameraButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <EditText
         android:id="@+id/userNameEditText"
         android:layout_width="250dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="180dp"
         android:autofillHints="username"
         android:background="@android:color/darker_gray"
         android:gravity="center"
@@ -32,53 +20,66 @@
         android:padding="16dp"
         android:textColor="@android:color/black"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.2"
+        app:layout_constraintHorizontal_bias="0.198"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/confirmNameButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
+        android:layout_marginBottom="40dp"
         android:text="@string/check"
+        app:layout_constraintBottom_toTopOf="@+id/textView"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/userNameEditText"
-        app:layout_constraintTop_toBottomOf="@+id/textView"/>
+        app:layout_constraintHorizontal_bias="0.609"
+        app:layout_constraintStart_toEndOf="@+id/userNameEditText" />
 
     <Button
         android:id="@+id/changeNameButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
+        android:layout_marginBottom="48dp"
         android:text="@string/change"
         android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/textView"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/userNameEditText"
-        app:layout_constraintTop_toBottomOf="@+id/confirmNameButton"/>
+        app:layout_constraintHorizontal_bias="0.609"
+        app:layout_constraintStart_toEndOf="@+id/userNameEditText" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/TextView_text"
+        android:layout_marginTop="40dp"
+        android:textSize="30sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userNameEditText" />
 
     <Button
         android:id="@+id/cameraButton"
         android:layout_width="0dp"
         android:layout_height="100dp"
-        android:text="카메라"
-        android:textSize="30dp"
+        android:text="@string/camera"
+        android:textSize="30sp"
         app:layout_constraintEnd_toStartOf="@+id/albumButton"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/userNameEditText"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
         android:layout_marginTop="30dp" />
 
     <Button
         android:id="@+id/albumButton"
         android:layout_width="0dp"
         android:layout_height="100dp"
-        android:text="앨범"
-        android:textSize="30dp"
+        android:text="@string/album"
+        android:textSize="30sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/cameraButton"
-        app:layout_constraintTop_toBottomOf="@+id/userNameEditText"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
         android:layout_marginTop="30dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

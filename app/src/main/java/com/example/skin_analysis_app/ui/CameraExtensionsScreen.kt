@@ -26,6 +26,7 @@ import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -70,6 +71,7 @@ class CameraExtensionsScreen(private val root: View) {
     private val cameraShutterButton: View = root.findViewById(R.id.cameraShutter)
     private val photoPreview: ImageView = root.findViewById(R.id.photoPreview)
     private val closePhotoPreview: View = root.findViewById(R.id.closePhotoPreview)
+    private val analyzeImageButton : Button = root.findViewById(R.id.analyzeImageButton)
     private val switchLensButton = root.findViewById<ImageView>(R.id.switchLens)
     private val extensionSelector: RecyclerView = root.findViewById(R.id.extensionSelector)
     private val extensionsAdapter: CameraExtensionsSelectorAdapter
@@ -142,6 +144,12 @@ class CameraExtensionsScreen(private val root: View) {
         closePhotoPreview.setOnClickListener {
             root.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 _action.emit(CameraUiAction.ClosePhotoPreviewClick)
+            }
+        }
+
+        analyzeImageButton.setOnClickListener{
+            root.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                _action.emit(CameraUiAction.analyzeImageButtonClick)
             }
         }
 
@@ -221,11 +229,13 @@ class CameraExtensionsScreen(private val root: View) {
         photoPreview.isVisible = true
         photoPreview.load(uri)
         closePhotoPreview.isVisible = true
+        analyzeImageButton.isVisible = true
     }
 
     private fun hidePhoto() {
         photoPreview.isVisible = false
         closePhotoPreview.isVisible = false
+        analyzeImageButton.isVisible = false
     }
 
     private fun setCameraScreenViewState(state: CameraPreviewScreenViewState) {

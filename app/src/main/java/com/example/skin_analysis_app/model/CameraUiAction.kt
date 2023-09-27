@@ -27,6 +27,7 @@ sealed class CameraUiAction {
     object SwitchCameraClick : CameraUiAction()
     object ShutterButtonClick : CameraUiAction()
     object ClosePhotoPreviewClick : CameraUiAction()
+    object analyzeImageButtonClick : CameraUiAction()
     data class SelectCameraExtension(@ExtensionMode.Mode val extension: Int) : CameraUiAction()
     data class Focus(val meteringPoint: MeteringPoint) : CameraUiAction()
     data class Scale(val scaleFactor: Float) : CameraUiAction()
