@@ -15,18 +15,18 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import android.widget.Toast
-import com.example.parsing_app.adapter.CameraExtensionItem
-import com.example.parsing_app.model.CameraState
-import com.example.parsing_app.model.CameraUiAction
-import com.example.parsing_app.model.CaptureState
-import com.example.parsing_app.model.PermissionState
-import com.example.parsing_app.repository.ImageCaptureRepository
-import com.example.parsing_app.ui.CameraExtensionsScreen
-import com.example.parsing_app.ui.doOnLaidOut
-import com.example.parsing_app.viewmodel.CameraExtensionsViewModel
-import com.example.parsing_app.viewmodel.CameraExtensionsViewModelFactory
-import com.example.parsing_app.viewstate.CaptureScreenViewState
-import com.example.parsing_app.viewstate.PostCaptureScreenViewState
+import com.example.skin_analysis_app.adapter.CameraExtensionItem
+import com.example.skin_analysis_app.model.CameraState
+import com.example.skin_analysis_app.model.CameraUiAction
+import com.example.skin_analysis_app.model.CaptureState
+import com.example.skin_analysis_app.model.PermissionState
+import com.example.skin_analysis_app.repository.ImageCaptureRepository
+import com.example.skin_analysis_app.ui.CameraExtensionsScreen
+import com.example.skin_analysis_app.ui.doOnLaidOut
+import com.example.skin_analysis_app.viewmodel.CameraExtensionsViewModel
+import com.example.skin_analysis_app.viewmodel.CameraExtensionsViewModelFactory
+import com.example.skin_analysis_app.viewstate.CaptureScreenViewState
+import com.example.skin_analysis_app.viewstate.PostCaptureScreenViewState
 
 
 /**

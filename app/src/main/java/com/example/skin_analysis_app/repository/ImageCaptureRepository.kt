@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.repository
+package com.example.skin_analysis_app.repository
 
 import android.content.Context
 import android.content.Intent
@@ -24,7 +24,7 @@ import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import androidx.core.net.toFile
-import com.example.parsing_app.R
+import com.example.skin_analysis_app.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.io.File

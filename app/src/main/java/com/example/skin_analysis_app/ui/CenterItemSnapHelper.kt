@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.ui
+package com.example.skin_analysis_app.ui
 
 import android.content.Context
 import android.util.DisplayMetrics

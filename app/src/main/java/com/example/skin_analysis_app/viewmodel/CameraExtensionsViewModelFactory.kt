@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.viewmodel
+package com.example.skin_analysis_app.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.parsing_app.repository.ImageCaptureRepository
+import com.example.skin_analysis_app.repository.ImageCaptureRepository
 
 /**
  * Creates ViewModel instances of [CameraExtensionsViewModel] to support injection of [Application]

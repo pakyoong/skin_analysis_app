@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.model
+package com.example.skin_analysis_app.model
 
 import androidx.camera.core.CameraSelector.LENS_FACING_BACK
 import androidx.camera.core.CameraSelector.LensFacing

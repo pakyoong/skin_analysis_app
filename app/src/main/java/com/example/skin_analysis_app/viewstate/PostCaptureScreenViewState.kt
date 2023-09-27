@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.viewstate
+package com.example.skin_analysis_app.viewstate
 
 import android.net.Uri
 

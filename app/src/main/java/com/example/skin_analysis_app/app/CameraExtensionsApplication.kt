@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.app
+package com.example.skin_analysis_app.app
 
 import android.app.Application
 import android.util.Log

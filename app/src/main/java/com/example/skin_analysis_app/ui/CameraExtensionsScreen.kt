@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.ui
+package com.example.skin_analysis_app.ui
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -40,12 +40,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import com.example.parsing_app.viewstate.CameraPreviewScreenViewState
-import com.example.parsing_app.viewstate.CaptureScreenViewState
-import com.example.parsing_app.viewstate.PostCaptureScreenViewState
-import com.example.parsing_app.R
-import com.example.parsing_app.adapter.CameraExtensionsSelectorAdapter
-import com.example.parsing_app.model.CameraUiAction
+import com.example.skin_analysis_app.viewstate.CameraPreviewScreenViewState
+import com.example.skin_analysis_app.viewstate.CaptureScreenViewState
+import com.example.skin_analysis_app.viewstate.PostCaptureScreenViewState
+import com.example.skin_analysis_app.R
+import com.example.skin_analysis_app.adapter.CameraExtensionsSelectorAdapter
+import com.example.skin_analysis_app.model.CameraUiAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch

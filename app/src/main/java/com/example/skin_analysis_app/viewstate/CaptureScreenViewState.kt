@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.viewstate
+package com.example.skin_analysis_app.viewstate
 
 /**
  * Capture Screen is the top level view state. A capture screen contains a camera preview screen

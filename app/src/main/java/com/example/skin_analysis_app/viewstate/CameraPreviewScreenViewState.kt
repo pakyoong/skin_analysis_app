@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.viewstate
+package com.example.skin_analysis_app.viewstate
 
-import com.example.parsing_app.adapter.CameraExtensionItem
+import com.example.skin_analysis_app.adapter.CameraExtensionItem
 
 /**
  * Represents the camera preview screen view state. The camera preview screen shows camera controls

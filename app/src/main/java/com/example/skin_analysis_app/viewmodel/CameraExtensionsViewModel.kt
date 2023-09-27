@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.viewmodel
+package com.example.skin_analysis_app.viewmodel
 
 import android.app.Application
 import androidx.camera.core.*
@@ -27,10 +27,10 @@ import androidx.core.net.toUri
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.parsing_app.model.CameraState
-import com.example.parsing_app.model.CameraUiState
-import com.example.parsing_app.model.CaptureState
-import com.example.parsing_app.repository.ImageCaptureRepository
+import com.example.skin_analysis_app.model.CameraState
+import com.example.skin_analysis_app.model.CameraUiState
+import com.example.skin_analysis_app.model.CaptureState
+import com.example.skin_analysis_app.repository.ImageCaptureRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +66,7 @@ class CameraExtensionsViewModel(private val userName: String,
         .build()
 
     private val _cameraUiState: MutableStateFlow<CameraUiState> = MutableStateFlow(CameraUiState())
-    private val _captureUiState: MutableStateFlow<com.example.parsing_app.model.CaptureState> =
+    private val _captureUiState: MutableStateFlow<com.example.skin_analysis_app.model.CaptureState> =
         MutableStateFlow(CaptureState.CaptureNotReady)
 
     val cameraUiState: Flow<CameraUiState> = _cameraUiState

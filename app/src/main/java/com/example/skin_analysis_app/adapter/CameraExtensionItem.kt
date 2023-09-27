@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.parsing_app.adapter
+package com.example.skin_analysis_app.adapter
 
 import androidx.camera.extensions.ExtensionMode
 
