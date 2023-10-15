@@ -127,27 +127,29 @@
     ```
     
 
-**원리**: 카메라나 갤러리에서 이미지를 불러올 때, 이미지의 META 데이터에 저장된 **`ExifInterface`** 정보를 활용하여 이미지의 회전 정보를 얻습니다. 얻은 정보를 바탕으로 이미지를 올바르게 회전 시킵니다.
+**원리**: 카메라나 갤러리에서 이미지를 불러올 때, 이미지의 META 데이터에 저장된 **ExifInterface** 정보를 활용하여 이미지의 회전 정보를 얻습니다. 얻은 정보를 바탕으로 이미지를 올바르게 회전 시킵니다.
 
-- **`getRealPathFromURI(Uri contentURI)`**: URI에서 이미지의 절대 경로를 얻습니다.
-- **`rotateImageIfRequired(Bitmap img, String imagePath)`**: **`ExifInterface`**를 활용해 이미지가 회전 되었는지 정보를 확인하고, 필요한 경우에 이미지를 회전 시킵니다.
-- **`rotateBitmap(Bitmap bitmap, int orientation)`**: 얻은 회전 정보를 바탕으로 실제로 이미지를 회전 시키는 함수입니다.
+- **getRealPathFromURI(Uri contentURI)**: URI에서 이미지의 절대 경로를 얻습니다.
+- **rotateImageIfRequired(Bitmap img, String imagePath)**: **ExifInterface**를 활용해 이미지가 회전 되었는지 정보를 확인하고, 필요한 경우에 이미지를 회전 시킵니다.
+- **rotateBitmap(Bitmap bitmap, int orientation)**: 얻은 회전 정보를 바탕으로 실제로 이미지를 회전 시키는 함수입니다.
+
+---
 
 ### 이미지 리사이즈 방식에 따른 Parsing문제
 
 **문제 상황**:
 
-- 사용 중인 **`face.pt`** 모델에 대해 PC 환경에서는 영상에서 ROI 영역이 정상적으로 파싱되었으나, 안드로이드 환경에서는 ROI 영역 파싱에 문제가 발생하였다.
+- 사용 중인 **face.pt** 모델에 대해 PC 환경에서는 영상에서 ROI 영역이 정상적으로 파싱되었으나, 안드로이드 환경에서는 ROI 영역 파싱에 문제가 발생하였다.
 
 **원인**:
 
 - PC(Python)에서의 이미지 리사이징 방식과 안드로이드에서의 이미지 리사이징 방식에 차이가 있었다.
-- 안드로이드에서 사용되는 **`Bitmap.createScaledBitmap`** 함수는 bilinear interpolation 방식을 사용한다.
-- 반면, PC(Python) 환경에서는 OpenCV의 **`resize`** 함수를 사용하여 INTER_NEAREST (Nearest neighbor interpolation) 방식을 사용하고 있다.
+- 안드로이드에서 사용되는 **Bitmap.createScaledBitmap** 함수는 bilinear interpolation 방식을 사용한다.
+- 반면, PC(Python) 환경에서는 OpenCV의 **resize** 함수를 사용하여 INTER_NEAREST (Nearest neighbor interpolation) 방식을 사용하고 있다.
 
 **해결 방법**:
 
-- 안드로이드 환경에서 OpenCV 라이브러리를 추가한 뒤, 안드로이드에서도 OpenCV의 **`resize`** 함수를 사용하여 이미지를 INTER_NEAREST 방식으로 리사이징하였다.
+- 안드로이드 환경에서 OpenCV 라이브러리를 추가한 뒤, 안드로이드에서도 OpenCV의 **resize** 함수를 사용하여 이미지를 INTER_NEAREST 방식으로 리사이징하였다.
 
 **변경 사항**:
 
@@ -195,4 +197,95 @@
 - **Nearest Neighbor** 보간법은 원본 이미지의 픽셀 값을 변경하지 않기 때문에, 이미지의 선명한 특징이나 경계를 그대로 유지할 수 있습니다. 하지만 리사이징된 이미지에서 계단 현상이 발생할 수 있어, 이미지가 덜 부드러워 보일 수 있습니다.
 - **Bilinear** 보간법은 주변 픽셀 값을 평균화하기 때문에 이미지가 더 부드럽게 보입니다. 그러나 선명한 특징이나 경계가 약간 흐려질 수 있습니다.
 
+따라서, 이미지의 세부 특징이나 경계를 파악하는 데 중요한 역할을 하는 모델 (예: 세그멘테이션, 경계 검출)의 경우, 보간법의 선택이 결과에 큰 영향을 미칠 수 있습니다. 특히, 모델 학습 시 사용한 리사이징 방법과 실제 사용 시의 리사이징 방법이 다른 경우, 결과의 차이가 발생할 수 있습니다.
+
+---
+
+### ROI 영역 추출 로직 옮기기
+
+**문제 상황**:
+
+- Python 환경 (Jupyter Notebook)에서는 데이터 분석과 이미지 처리에 탁월한 기능을 제공하는 여러 라이브러리들이 있어, ROI (Region of Interest) 영역 추출과 같은 고급 이미지 처리 기능을 비교적 간단한 코드로 구현할 수 있었습니다. 그러나, 이 로직을 Java 환경으로 이식하는 과정에서, Python에서 사용된 몇몇 기능들이 Java에서는 직접 지원되지 않아 어려움을 겪었습니다.
+
+**원인**:
+
+- Python의 numpy 라이브러리는 다양한 배열 연산 기능을 제공한다. 특히, numpy.where 같은 함수를 통해 배열에서 특정 조건을 만족하는 원소의 위치를 쉽게 찾을 수 있다. 그러나 Java에서는 이러한 기능을 제공하는 라이브러리가 내장되어 있지 않아, 동일한 로직을 구현하는데 어려움이 있었다.
+
+**해결 방법 및 구현 상세**:
+
+1. **Point 클래스 설명**:
+    - **Point** 클래스는 2차원 평면 상의 점의 좌표를 표현하기 위한 클래스입니다. 이 클래스는 **x**와 **y**라는 두 개의 속성을 가지며, 생성자를 통해 초기값을 설정할 수 있습니다.
+    
+    ```jsx
+    public class Point {
+        public int x, y;
+    
+        public Point(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+    ```
+    
+2. **numpy.where 기능 구현**:
+    - Python의 numpy.where 함수는 배열에서 특정 조건을 만족하는 원소의 위치를 반환한다.
+    - Java로 이 기능을 구현하기 위해, 2차원 배열을 순회하면서 특정 조건을 만족하는 원소의 좌표를 Point 객체로 저장하고 반환하는 where 함수를 작성하였다.
+    
+    ```java
+    private List<Point> where(int[] pixels, int value) {
+            List<Point> points = new ArrayList<>();
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int pixel = pixels[y * w + x] & 0xFF;  // Extracting the blue channel
+                    if (pixel == value) {
+                        points.add(new Point(x, y));
+                    }
+                }
+            }
+            return points;
+        }
+    ```
+    
+3. **numpy.where 기능의 확장**:
+    - 여러 조건 중 하나를 만족하는 원소의 위치를 찾는 경우를 위해 whereMultiple 함수를 추가로 구현하였다.
+    
+    ```java
+    private List<Point> whereMultiple(int[] pixels, int... values) {
+            List<Point> points = new ArrayList<>();
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int pixel = pixels[y * w + x] & 0xFF;  // Extracting the blue channel
+                    for (int value : values) {
+                        if (pixel == value) {
+                            points.add(new Point(x, y));
+                            break;
+                        }
+                    }
+                }
+            }
+            return points;
+        }
+    ```
+    
+4. **배열의 최소/최대 값 찾기**:
+    - numpy의 amin과 amax 함수를 사용하여 배열에서 최소값과 최대값을 찾는 것과 유사한 기능을 Java에서 구현하였다.
+    - Java의 스트림 API를 활용하여 리스트의 최소값과 최대값을 찾는 함수를 작성하였다.
+    
+    ```java
+    private int min(List<Point> points, char axis) {
+        return points.stream().mapToInt(p -> (axis == 'x') ? p.x : p.y).min().orElse(0);
+        
+    }
+    
+    private int max(List<Point> points, char axis) {
+        return points.stream().mapToInt(p -> (axis == 'x') ? p.x : p.y).max().orElse(0);
+    }
+    ```
+    
+
+**결론**:
+
+- Python의 numpy 라이브러리의 기능 중, ROI 영역 추출 로직에 필요한 주요 기능들을 Java로 성공적으로 재구현하였다. 이를 통해 Python에서 작성된 로직을 Java 환경에서도 효과적으로 사용할 수 있게 되었다.
+
+---
 따라서, 이미지의 세부 특징이나 경계를 파악하는 데 중요한 역할을 하는 모델 (예: 세그멘테이션, 경계 검출)의 경우, 보간법의 선택이 결과에 큰 영향을 미칠 수 있습니다. 특히, 모델 학습 시 사용한 리사이징 방법과 실제 사용 시의 리사이징 방법이 다른 경우, 결과의 차이가 발생할 수 있습니다.
