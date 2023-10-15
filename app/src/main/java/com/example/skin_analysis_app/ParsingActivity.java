@@ -9,6 +9,7 @@ import android.graphics.Point;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
@@ -18,6 +19,7 @@ import android.widget.ProgressBar;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.opencv.android.OpenCVLoader;
 import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
@@ -31,6 +33,12 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.opencv.android.Utils;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
 
 // ParsingActivity: 이미지를 파싱하고 분석하는 Activity
 public class ParsingActivity extends AppCompatActivity implements Runnable {
@@ -63,6 +71,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
     private Module mModule = null;
     private ImageView mImageView;
     private String picturePath = null;
+    private Uri picturePathUri = null;
     private Bitmap mBitmap = null;
     private Bitmap finalBitmap = null;
     private Bitmap classBitmap = null;
@@ -146,11 +155,12 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             return file.getAbsolutePath();
         }
     }
-
     // onCreate: Activity가 생성될 때 호출되는 메서드
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_parsing);
+
+        OpenCVLoader.initDebug();
 
         // 이미지 뷰를 참조
         mImageView = findViewById(R.id.imageView);
@@ -172,6 +182,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
         } else {
             // MainActivity에서 이미지 경로를 가져옴
             picturePath = intent.getStringExtra("IMAGE_PATH");
+            picturePathUri = Uri.parse(intent.getStringExtra("IMAGE_PATH"));
             mBitmap = BitmapFactory.decodeFile(picturePath);
             try {
                 mBitmap = rotateImageIfRequired(mBitmap, picturePath);
@@ -221,21 +232,20 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
         });
 
         mButtonRoI = findViewById(R.id.roiButton);
-        mButtonRoI.setOnClickListener(new View.OnClickListener(){
-            public void onClick(View view){
+        mButtonRoI.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
                 get_RoI(classBitmap);
-                Log.d("RoI","ROI(xmin, ymin, xmax, ymax): " + roi_xmin + " " + roi_ymin + " "  + roi_xmax + " "  + roi_ymax);
+                Log.d("RoI", "ROI(xmin, ymin, xmax, ymax): " + roi_xmin + " " + roi_ymin + " " + roi_xmax + " " + roi_ymax);
 
                 roi_w = roi_xmax - roi_xmin;
                 roi_h = roi_ymax - roi_ymin;
-                Log.d("RoI","ROI(xmin, ymin, width, height):" + roi_xmin + " "  + roi_ymin + " "  + roi_w + " "  + roi_h);
+                Log.d("RoI", "ROI(xmin, ymin, width, height):" + roi_xmin + " " + roi_ymin + " " + roi_w + " " + roi_h);
                 get_eyes(classBitmap);
-                Log.d("RoI","("+ leye_x + "," + leye_y + "," + leye_w + "," + leye_h +"), (" + reye_x + "," +  reye_y + "," + reye_w + ","+  reye_h+ ")");
+                Log.d("RoI", "(" + leye_x + "," + leye_y + "," + leye_w + "," + leye_h + "), (" + reye_x + "," + reye_y + "," + reye_w + "," + reye_h + ")");
 
 
             }
         });
-
 
 
     }
@@ -243,8 +253,19 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
     // run: 이미지를 처리하고 파싱하는 주요 함수
     @Override
     public void run() {
-        // 이미지를 리사이즈 하는 부분
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
+        // 이미지를 리사이즈 하는 부분(createScaledBitmap)
+//        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
+
+        // 이미지를 리사이즈 하는 부분(OpenCV)
+        Mat mat = new Mat();
+        Utils.bitmapToMat(mBitmap, mat); // Bitmap을 Mat으로 변환
+
+        Mat resizedMat = new Mat();
+        Imgproc.resize(mat, resizedMat, new Size(512, 512), 0, 0, Imgproc.INTER_NEAREST); // INTER_NEAREST 사용
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(resizedMat, resizedBitmap); // 리사이즈된 Mat을 다시 Bitmap으로 변환
+
 
         // 이미지를 전처리 하는 부분
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
@@ -278,17 +299,40 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                     }
                 }
                 ColorValues[j * width + k] = getColorForClass(maxClass);
-                classValues[j * width + k] = 0xFF000000 | (maxClass & 0xFF);
+                int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
+                classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
 
             }
         }
         final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
         final Bitmap out2Bitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
 
-        // 원본 이미지 크기로 결과 이미지 스케일링
-        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
-        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+//
+//        // Bitmap 파일 저장
+//        saveBitmapAsPNG(outBitmap, "outBitmap_512");
+//        saveBitmapAsPNG(out2Bitmap, "out2Bitmap_512");
 
+//        // 원본 이미지 크기로 결과 이미지 스케일링(createScaledBitmap)
+//        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+//        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+
+        // 원본 이미지 크기로 결과 이미지 스케일링
+        Mat outMat = new Mat();
+        Utils.bitmapToMat(outBitmap, outMat);
+        Mat scaledOutMat = new Mat();
+        Imgproc.resize(outMat, scaledOutMat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+        Bitmap scaledBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(scaledOutMat, scaledBitmap);
+
+
+        Mat out2Mat = new Mat();
+        Utils.bitmapToMat(out2Bitmap, out2Mat);
+        Mat scaledOut2Mat = new Mat();
+        Imgproc.resize(out2Mat, scaledOut2Mat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+        Bitmap scaled2Bitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(scaledOut2Mat, scaled2Bitmap);
 
         if (scaledBitmap.getWidth() > scaledBitmap.getHeight()) {
             finalBitmap = rotateBitmap(scaledBitmap, ExifInterface.ORIENTATION_ROTATE_90);
@@ -319,7 +363,27 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             mButtonParsing.setText(R.string.parsing);
             mButtonParsing.setEnabled(true);
         });
+
+//        // Bitmap 파일 저장 Test
+//        saveBitmapAsPNG(finalBitmap, "finalBitmap");
+//        saveBitmapAsPNG(classBitmap, "classBitmap");
+
+
     }
+    // Bitmap 파일 저장 함수
+    private void saveBitmapAsPNG(Bitmap bitmap, String filename) {
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        String originalFileName = new File(picturePath).getName().replaceFirst("[.][^.]+$", "");
+        File imageFile = new File(storageDir, originalFileName + "_" + filename + ".png");
+
+        try (FileOutputStream outStream = new FileOutputStream(imageFile)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
+            outStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // getColorForClass: 클래스 인덱스에 따라 색상을 반환하는 함수
     private int getColorForClass(int classIndex) {
@@ -422,7 +486,6 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
     }
 
 
-
     private int min(List<Point> points, char axis) {
         return points.stream().mapToInt(p -> (axis == 'x') ? p.x : p.y).min().orElse(0);
     }
@@ -513,7 +576,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
 
         // For the nose
         if (!nose.isEmpty()) {
-            Log.d("MyApp","Nose appeared.");
+            Log.d("MyApp", "Nose appeared.");
             is_nose = true;
             nose_ymin = min(nose, 'y');
             nose_ymax = max(nose, 'y');
@@ -528,20 +591,20 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
 
         // For the left ear
         if (!lear.isEmpty()) {
-            Log.d("MyApp","Left ear appeared: " + min(lear, 'x') + ", " + max(lear, 'x') + ", " + min(lear, 'y') + ", " + max(lear, 'y'));
+            Log.d("MyApp", "Left ear appeared: " + min(lear, 'x') + ", " + max(lear, 'x') + ", " + min(lear, 'y') + ", " + max(lear, 'y'));
 
             if (min(lear, 'x') < mBitmap.getWidth() / 2) {
                 if (max(lear, 'x') > mBitmap.getWidth() / 2) {
-                    Log.d("MyApp","Left ear error!");
+                    Log.d("MyApp", "Left ear error!");
                     is_lear = false;
                 } else {
-                    Log.d("MyApp","Changed to right ear.");
+                    Log.d("MyApp", "Changed to right ear.");
                     is_rear = true;
                     rear_ymin = min(lear, 'y');
                     rear_ymax = max(lear, 'y');
                     rear_xmin = min(lear, 'x');
                     rear_xmax = max(lear, 'x');
-                    Log.d("MyApp","rear: " + rear_xmin + ", " + rear_xmax + ", " + rear_ymin + ", " + rear_ymax);
+                    Log.d("MyApp", "rear: " + rear_xmin + ", " + rear_xmax + ", " + rear_ymin + ", " + rear_ymax);
                 }
             } else {
                 is_lear = true;
@@ -549,26 +612,26 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                 lear_ymax = max(lear, 'y');
                 lear_xmin = min(lear, 'x');
                 lear_xmax = max(lear, 'x');
-                Log.d("MyApp","lear: " + lear_xmin + ", " + lear_xmax + ", " + lear_ymin + ", " + lear_ymax);
+                Log.d("MyApp", "lear: " + lear_xmin + ", " + lear_xmax + ", " + lear_ymin + ", " + lear_ymax);
             }
         }
 
         // For the right ear
         if (!rear.isEmpty()) {
-            Log.d("MyApp","Right ear appeared: " + min(rear, 'x') + ", " + max(rear, 'x') + ", " + min(rear, 'y') + ", " + max(rear, 'y'));
+            Log.d("MyApp", "Right ear appeared: " + min(rear, 'x') + ", " + max(rear, 'x') + ", " + min(rear, 'y') + ", " + max(rear, 'y'));
 
             if (max(rear, 'x') > mBitmap.getWidth() / 2) {
                 if (min(rear, 'x') < mBitmap.getWidth() / 2) {
-                    Log.d("MyApp","Right ear error!");
+                    Log.d("MyApp", "Right ear error!");
                     is_rear = false;
                 } else {
-                    Log.d("MyApp","Changed to left ear.");
+                    Log.d("MyApp", "Changed to left ear.");
                     is_lear = true;
                     lear_ymin = min(rear, 'y');
                     lear_ymax = max(rear, 'y');
                     lear_xmin = min(rear, 'x');
                     lear_xmax = max(rear, 'x');
-                    Log.d("MyApp","lear: " + lear_xmin + ", " + lear_xmax + ", " + lear_ymin + ", " + lear_ymax);
+                    Log.d("MyApp", "lear: " + lear_xmin + ", " + lear_xmax + ", " + lear_ymin + ", " + lear_ymax);
                 }
             } else {
                 is_rear = true;
@@ -576,12 +639,12 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                 rear_ymax = max(rear, 'y');
                 rear_xmin = min(rear, 'x');
                 rear_xmax = max(rear, 'x');
-                Log.d("MyApp","rear: " + rear_xmin + ", " + rear_xmax + ", " + rear_ymin + ", " + rear_ymax);
+                Log.d("MyApp", "rear: " + rear_xmin + ", " + rear_xmax + ", " + rear_ymin + ", " + rear_ymax);
             }
         }
 
         if (is_lear && is_rear && lear_xmin < rear_xmin) {
-            Log.d("MyApp","Left and right ear exchanged.");
+            Log.d("MyApp", "Left and right ear exchanged.");
             int temp;
 
             temp = lear_ymin;
@@ -683,8 +746,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                     roi_xmin = face_xmin;
                     roi_xmax = face_xmax;
                 }
-            }
-            else{ // no nose
+            } else { // no nose
                 if (is_lear && is_rear) {
                     roi_ymin = Math.min(lear_ymin, rear_ymin);
                     roi_ymax = Math.min(lear_ymax, rear_ymax);
@@ -717,8 +779,8 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
 
         if (!leye.isEmpty()) {
             leye_ymin = min(leye, 'y');
-            leye_ymax = max(leye,'y');
-            leye_xmin = min(leye,'x');
+            leye_ymax = max(leye, 'y');
+            leye_xmin = min(leye, 'x');
             leye_xmax = max(leye, 'x');
             leye_w = (leye_xmax - leye_xmin) / 2;
             leye_h = (leye_ymax - leye_ymin) / 2;
@@ -731,7 +793,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             leye_y = null;
         }
 
-        if(!reye.isEmpty()){
+        if (!reye.isEmpty()) {
             reye_ymin = min(reye, 'y');
             reye_ymax = max(reye, 'y');
             reye_xmin = min(reye, 'x');
@@ -740,8 +802,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             reye_h = (reye_ymax - reye_ymin) / 2;
             reye_x = reye_xmin + reye_w;
             reye_y = reye_ymin + reye_h;
-        }
-        else{
+        } else {
             reye_w = null;
             reye_h = null;
             reye_x = null;
