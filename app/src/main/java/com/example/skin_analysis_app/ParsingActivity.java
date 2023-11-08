@@ -4,8 +4,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Point;
+import android.graphics.Paint;
+
+import android.graphics.RectF;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,6 +17,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -20,6 +25,12 @@ import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
@@ -33,6 +44,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -41,8 +53,9 @@ import org.opencv.imgproc.Imgproc;
 
 
 // ParsingActivity: 이미지를 파싱하고 분석하는 Activity
-public class ParsingActivity extends AppCompatActivity implements Runnable {
+public class ParsingActivity extends AppCompatActivity {
 
+    //<editor-fold desc="클래스 선언">
     // 클래스의 수를 상수로 선언
     private static final int N_CLASSES = 19;
     public static final String[] LABELS = {
@@ -66,9 +79,12 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             "hair",
             "hat"
     };
+    //</editor-fold>
 
+    //<editor-fold desc="변수 선언">
     // 멤버 변수 선언
     private Module mModule = null;
+    private Module mModule2 = null;
     private ImageView mImageView;
     private String picturePath = null;
     private Uri picturePathUri = null;
@@ -79,6 +95,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
     private ProgressBar mProgressBar;
     private Button mBackButton;
     private Button mButtonRoI;
+    private Button mUnetButton;
 
     //ROI 변수 선언
 
@@ -135,6 +152,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
     Integer reye_y = -1;
     Integer roi_w = -1;
     Integer roi_h = -1;
+    //</editor-fold>
 
     // assetFilePath: Asset 폴더에서 파일 경로를 가져오는 함수
     public static String assetFilePath(Context context, String assetName) throws IOException {
@@ -155,6 +173,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
             return file.getAbsolutePath();
         }
     }
+
     // onCreate: Activity가 생성될 때 호출되는 메서드
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -164,6 +183,7 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
 
         // 이미지 뷰를 참조
         mImageView = findViewById(R.id.imageView);
+
 
         // 인텐트에서 이미지 URI를 가져옴
         Intent intent = getIntent();
@@ -198,6 +218,14 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
         mButtonParsing = findViewById(R.id.parsingButton);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
+        // PyTorch 모델(Pt)을 로드
+        try {
+            mModule = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "face.pt"));
+        } catch (IOException e) {
+            Log.e("ImageParsing", "Error reading assets", e);
+            finish();
+        }
+
         // 파싱 버튼에 클릭 리스너 설정
         mButtonParsing.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
@@ -207,18 +235,131 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                 mButtonParsing.setText(getString(R.string.run_model));
 
                 // 새 스레드를 시작하여 이미지 파싱을 수행
-                Thread thread = new Thread(ParsingActivity.this);
-                thread.start();
+                Thread parsingTread = new Thread(new Runnable() {
+                    // run: 이미지를 처리하고 파싱하는 주요 함수
+                    @Override
+                    public void run() {
+                        // 이미지를 리사이즈 하는 부분(createScaledBitmap)
+                        //        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
+
+                        // 이미지를 리사이즈 하는 부분(OpenCV)
+                        Mat mat = new Mat();
+                        Utils.bitmapToMat(mBitmap, mat); // Bitmap을 Mat으로 변환
+
+                        Mat resizedMat = new Mat();
+                        Imgproc.resize(mat, resizedMat, new Size(512, 512), 0, 0, Imgproc.INTER_NEAREST); // INTER_NEAREST 사용
+
+                        Bitmap resizedBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(resizedMat, resizedBitmap); // 리사이즈된 Mat을 다시 Bitmap으로 변환
+
+
+                        // 이미지를 전처리 하는 부분
+                        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                        final float[] inputs = inputTensor.getDataAsFloatArray();
+
+                        // 모델을 사용하여 예측하는 부분
+                        final long startTime = SystemClock.elapsedRealtime();
+                        IValue[] outputs = mModule.forward(IValue.from(inputTensor)).toTuple();
+                        final Tensor outputTensor = outputs[0].toTensor();
+                        Log.d("parsing", "Output tensor shape: " + java.util.Arrays.toString(outputTensor.shape()));
+
+                        final long inferenceTime = SystemClock.elapsedRealtime() - startTime;
+                        Log.d("parsing", "inference time (ms): " + inferenceTime);
+
+                        final float[] scores = outputTensor.getDataAsFloatArray();
+
+                        // 결과를 처리하고 화면에 표시하는 부분
+                        int width = 512;
+                        int height = 512;
+                        int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
+                        int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
+                        for (int j = 0; j < height; j++) {
+                            for (int k = 0; k < width; k++) {
+                                int maxClass = 0;
+                                double maxnum = -Double.MAX_VALUE;
+                                for (int i = 0; i < N_CLASSES; i++) {
+                                    float score = scores[(i * width * height) + (j * width) + k];
+                                    if (score > maxnum) {
+                                        maxnum = score;
+                                        maxClass = i;
+                                    }
+                                }
+                                ColorValues[j * width + k] = getColorForClass(maxClass);
+                                int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
+                                classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
+
+                            }
+                        }
+                        final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
+                        final Bitmap out2Bitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
+
+//
+//                        // Bitmap 파일 저장
+//                        saveBitmapAsPNG(outBitmap, "outBitmap_512");
+//                        saveBitmapAsPNG(out2Bitmap, "out2Bitmap_512");
+//
+//                        // 원본 이미지 크기로 결과 이미지 스케일링(createScaledBitmap)
+//                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+//                        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+
+                        // 원본 이미지 크기로 결과 이미지 스케일링
+                        Mat outMat = new Mat();
+                        Utils.bitmapToMat(outBitmap, outMat);
+                        Mat scaledOutMat = new Mat();
+                        Imgproc.resize(outMat, scaledOutMat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+                        Bitmap scaledBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(scaledOutMat, scaledBitmap);
+
+
+                        Mat out2Mat = new Mat();
+                        Utils.bitmapToMat(out2Bitmap, out2Mat);
+                        Mat scaledOut2Mat = new Mat();
+                        Imgproc.resize(out2Mat, scaledOut2Mat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+                        Bitmap scaled2Bitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(scaledOut2Mat, scaled2Bitmap);
+
+                        if (scaledBitmap.getWidth() > scaledBitmap.getHeight()) {
+                            finalBitmap = rotateBitmap(scaledBitmap, ExifInterface.ORIENTATION_ROTATE_90);
+                        } else {
+                            finalBitmap = scaledBitmap;
+                        }
+
+                        if (scaled2Bitmap.getWidth() > scaled2Bitmap.getHeight()) {
+                            classBitmap = rotateBitmap(scaled2Bitmap, ExifInterface.ORIENTATION_ROTATE_90);
+                        } else {
+                            classBitmap = scaled2Bitmap;
+                        }
+
+//                        // classBitmap 에서 class 번호가 잘 출력 되는지 Pixels 값 테스트
+//                        int[] pixels = new int[classBitmap.getWidth() * classBitmap.getHeight()];
+//                        classBitmap.getPixels(pixels, 0, classBitmap.getWidth(), 0, 0, classBitmap.getWidth(), classBitmap.getHeight());
+//
+//                        for (int i = 0; i < pixels.length; i++) {
+//                            int blue = pixels[i] & 0xFF; // 클래스 번호가 블루 채널에 저장될 것으로 예상
+//                            if (blue != 0) {
+//                                Log.d("PARSING_ACTIVITY", "Pixel " + i + ": Class Number = " + blue);
+//                            }
+//                        }
+
+                        runOnUiThread(() -> {
+                            mImageView.setImageBitmap(finalBitmap);
+                            mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+                            mButtonParsing.setText(R.string.parsing);
+                            mButtonParsing.setEnabled(true);
+                        });
+
+                        //        // Bitmap 파일 저장 Test
+                        //        saveBitmapAsPNG(finalBitmap, "finalBitmap");
+                        //        saveBitmapAsPNG(classBitmap, "classBitmap");
+
+                    }
+                });
+                parsingTread.start();
             }
         });
 
-        // PyTorch 모델(Pt)을 로드
-        try {
-            mModule = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "face.pt"));
-        } catch (IOException e) {
-            Log.e("ImageParsing", "Error reading assets", e);
-            finish();
-        }
 
         // 뒤로 가기 버튼을 참조하고 클릭 리스너를 설정
         mBackButton = findViewById(R.id.backButton);
@@ -243,133 +384,115 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
                 get_eyes(classBitmap);
                 Log.d("RoI", "(" + leye_x + "," + leye_y + "," + leye_w + "," + leye_h + "), (" + reye_x + "," + reye_y + "," + reye_w + "," + reye_h + ")");
 
+                // finalBitmap을 Mat 객체로 변환
+                Mat imgMat = new Mat();
+                Bitmap bmp32 = finalBitmap.copy(Bitmap.Config.ARGB_8888, true);
+                Utils.bitmapToMat(bmp32, imgMat);
 
-            }
-        });
+                Rect rect = new Rect(roi_xmin, roi_ymin, roi_xmax - roi_xmin, roi_ymax - roi_ymin);
+                // OpenCV를 사용하여 사각형 그리기
+                Imgproc.rectangle(imgMat, rect, new Scalar(255, 0, 0), 3);
 
-
-    }
-
-    // run: 이미지를 처리하고 파싱하는 주요 함수
-    @Override
-    public void run() {
-        // 이미지를 리사이즈 하는 부분(createScaledBitmap)
-//        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
-
-        // 이미지를 리사이즈 하는 부분(OpenCV)
-        Mat mat = new Mat();
-        Utils.bitmapToMat(mBitmap, mat); // Bitmap을 Mat으로 변환
-
-        Mat resizedMat = new Mat();
-        Imgproc.resize(mat, resizedMat, new Size(512, 512), 0, 0, Imgproc.INTER_NEAREST); // INTER_NEAREST 사용
-
-        Bitmap resizedBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(resizedMat, resizedBitmap); // 리사이즈된 Mat을 다시 Bitmap으로 변환
-
-
-        // 이미지를 전처리 하는 부분
-        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
-        final float[] inputs = inputTensor.getDataAsFloatArray();
-
-        // 모델을 사용하여 예측하는 부분
-        final long startTime = SystemClock.elapsedRealtime();
-        IValue[] outputs = mModule.forward(IValue.from(inputTensor)).toTuple();
-        final Tensor outputTensor = outputs[0].toTensor();
-        Log.d("parsing", "Output tensor shape: " + java.util.Arrays.toString(outputTensor.shape()));
-
-        final long inferenceTime = SystemClock.elapsedRealtime() - startTime;
-        Log.d("parsing", "inference time (ms): " + inferenceTime);
-
-        final float[] scores = outputTensor.getDataAsFloatArray();
-
-        // 결과를 처리하고 화면에 표시하는 부분
-        int width = 512;
-        int height = 512;
-        int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
-        int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
-        for (int j = 0; j < height; j++) {
-            for (int k = 0; k < width; k++) {
-                int maxClass = 0;
-                double maxnum = -Double.MAX_VALUE;
-                for (int i = 0; i < N_CLASSES; i++) {
-                    float score = scores[(i * width * height) + (j * width) + k];
-                    if (score > maxnum) {
-                        maxnum = score;
-                        maxClass = i;
-                    }
+                // Mat 객체를 Bitmap으로 변환하여 ImageView에 표시
+                Utils.matToBitmap(imgMat, finalBitmap);
+                mImageView.setImageBitmap(finalBitmap);
+                if (is_leye && !eye_error) {
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 0, 0), -1);
                 }
-                ColorValues[j * width + k] = getColorForClass(maxClass);
-                int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
-                classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
+                if (is_reye && !eye_error) {
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 0, 0), -1);
+                }
 
+                Utils.matToBitmap(imgMat, finalBitmap);
+
+                // mBitmap을 새 Bitmap 객체로 복사
+                Bitmap newBitmap = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
+                // 새로운 Bitmap을 Mat 객체로 변환
+                Mat newImgMat = new Mat();
+                Utils.bitmapToMat(newBitmap, newImgMat);
+
+                // 조건에 따라 타원을 그리기
+                if (is_leye && !eye_error) {
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(0, 0, 0), -1);
+                }
+                if (is_reye && !eye_error) {
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(0, 0, 0), -1);
+                }
+
+                // Mat 객체를 다시 Bitmap으로 변환
+                Utils.matToBitmap(newImgMat, newBitmap);
+
+
+                int cropXmin = roi_xmin;
+                int cropXmax = roi_xmax;
+                int cropYmin = roi_ymin;
+                int cropYmax = roi_ymax;
+                int cropW = cropXmax - cropXmin;
+                int cropH = cropYmax - cropYmin;
+
+                // 자르려는 크기가 비트맵의 범위를 넘어서지 않도록 조정
+                cropXmin = Math.max(0, cropXmin);
+                cropYmin = Math.max(0, cropYmin);
+                cropW = Math.min(newBitmap.getWidth() - cropXmin, cropW);
+                cropH = Math.min(newBitmap.getHeight() - cropYmin, cropH);
+                // 새 비트맵에서 지정된 영역을 잘라냄
+                Bitmap cropNewImg = Bitmap.createBitmap(newBitmap, cropXmin, cropYmin, cropW, cropH);
+
+
+                // cropNewImg의 크기를 가져옴
+                int width = cropNewImg.getWidth();
+                int height = cropNewImg.getHeight();
+                int halfWidth = width / 2;
+
+                // cropNewImg를 수평으로 반으로 나누어 왼쪽과 오른쪽 이미지를 생성
+                Bitmap cropNewLeft = Bitmap.createBitmap(cropNewImg, 0, 0, halfWidth, height);
+                Bitmap cropNewRight = Bitmap.createBitmap(cropNewImg, halfWidth, 0, halfWidth, height);
+
+                // cropNewLeft과 cropNewRight을 Mat 객체로 변환합니다.
+                Mat cropNewLeftMat = new Mat();
+                Mat cropNewRightMat = new Mat();
+                Utils.bitmapToMat(cropNewLeft, cropNewLeftMat);
+                Utils.bitmapToMat(cropNewRight, cropNewRightMat);
+
+                // letterboxImage 함수를 사용하여 이미지 크기를 조정합니다.
+                Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
+                Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
+
+                    // Mat 객체를 다시 Bitmap으로 변환합니다.
+                Bitmap newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
+                Bitmap newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(newLeftMat, newLeftBitmap);
+                Utils.matToBitmap(newRightMat, newRightBitmap);
+
+                // ImageView에 새로운 Bitmap을 설정합니다.
+                mImageView.setImageBitmap(newRightBitmap);
             }
-        }
-        final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
-        final Bitmap out2Bitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
-
-//
-//        // Bitmap 파일 저장
-//        saveBitmapAsPNG(outBitmap, "outBitmap_512");
-//        saveBitmapAsPNG(out2Bitmap, "out2Bitmap_512");
-
-//        // 원본 이미지 크기로 결과 이미지 스케일링(createScaledBitmap)
-//        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
-//        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
-
-        // 원본 이미지 크기로 결과 이미지 스케일링
-        Mat outMat = new Mat();
-        Utils.bitmapToMat(outBitmap, outMat);
-        Mat scaledOutMat = new Mat();
-        Imgproc.resize(outMat, scaledOutMat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
-
-        Bitmap scaledBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(scaledOutMat, scaledBitmap);
-
-
-        Mat out2Mat = new Mat();
-        Utils.bitmapToMat(out2Bitmap, out2Mat);
-        Mat scaledOut2Mat = new Mat();
-        Imgproc.resize(out2Mat, scaledOut2Mat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
-
-        Bitmap scaled2Bitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(scaledOut2Mat, scaled2Bitmap);
-
-        if (scaledBitmap.getWidth() > scaledBitmap.getHeight()) {
-            finalBitmap = rotateBitmap(scaledBitmap, ExifInterface.ORIENTATION_ROTATE_90);
-        } else {
-            finalBitmap = scaledBitmap;
-        }
-
-        if (scaled2Bitmap.getWidth() > scaled2Bitmap.getHeight()) {
-            classBitmap = rotateBitmap(scaled2Bitmap, ExifInterface.ORIENTATION_ROTATE_90);
-        } else {
-            classBitmap = scaled2Bitmap;
-        }
-
-//        // classBitmap 에서 class 번호가 잘 출력 되는지 Pixels 값 테스트
-//        int[] pixels = new int[classBitmap.getWidth() * classBitmap.getHeight()];
-//        classBitmap.getPixels(pixels, 0, classBitmap.getWidth(), 0, 0, classBitmap.getWidth(), classBitmap.getHeight());
-//
-//        for (int i = 0; i < pixels.length; i++) {
-//            int blue = pixels[i] & 0xFF; // 클래스 번호가 블루 채널에 저장될 것으로 예상
-//            if (blue != 0) {
-//                Log.d("PARSING_ACTIVITY", "Pixel " + i + ": Class Number = " + blue);
-//            }
-//        }
-
-        runOnUiThread(() -> {
-            mImageView.setImageBitmap(finalBitmap);
-            mProgressBar.setVisibility(ProgressBar.INVISIBLE);
-            mButtonParsing.setText(R.string.parsing);
-            mButtonParsing.setEnabled(true);
         });
 
-//        // Bitmap 파일 저장 Test
-//        saveBitmapAsPNG(finalBitmap, "finalBitmap");
-//        saveBitmapAsPNG(classBitmap, "classBitmap");
 
+        // PyTorch 모델(Pt)을 로드
+        try {
+            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "NL_BA_unerform_loss_unet.pt"));
+        } catch (IOException e) {
+            Log.e("ImageParsing", "Error reading assets", e);
+            finish();
+        }
+
+        mUnetButton = findViewById(R.id.UnetButton);
+        mUnetButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                Thread unetThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // U-Net 작업 수행
+                    }
+                });
+                unetThread.start();
+            }
+        });
 
     }
+
     // Bitmap 파일 저장 함수
     private void saveBitmapAsPNG(Bitmap bitmap, String filename) {
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
@@ -835,5 +958,34 @@ public class ParsingActivity extends AppCompatActivity implements Runnable {
         }
 
         return result;
+    }
+
+    public Mat letterboxImage(Mat image, Size expectedSize) {
+        // Get the dimensions of the input image
+        int ih = image.rows();
+        int iw = image.cols();
+        int eh = (int) expectedSize.height;
+        int ew = (int) expectedSize.width;
+
+        // Calculate the scale to maintain aspect ratio
+        double scale = Math.min((double) eh / ih, (double) ew / iw);
+        int nh = (int) (ih * scale);
+        int nw = (int) (iw * scale);
+
+        // Resize the image
+        Mat resizedImage = new Mat();
+        Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_CUBIC);
+
+        Mat newImage = Mat.zeros(eh, ew, image.type());
+
+        // Calculate the top-left corner coordinates of where to place the resized image
+        int top = (eh - nh) / 2;
+        int left = (ew - nw) / 2;
+
+        // Place the resized image in the center of the new image
+        Mat subMat = newImage.submat(top, top + nh, left, left + nw);
+        resizedImage.copyTo(subMat);
+
+        return newImage;
     }
 }

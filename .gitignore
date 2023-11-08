@@ -1856,3 +1856,4 @@ local.properties
 /OpenCV/java/AndroidManifest.xml
 /OpenCV/libcxx_helper/CMakeLists.txt
 /OpenCV/libcxx_helper/dummy.cpp
+/app/src/main/assets/NL_BA_unerform_loss_unet.pt

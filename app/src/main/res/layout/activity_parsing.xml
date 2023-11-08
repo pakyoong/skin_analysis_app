@@ -5,6 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+
+
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="388dp"
@@ -15,7 +17,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.478"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"/>
 
     <TextView
         android:id="@+id/textView2"
@@ -76,5 +78,17 @@
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/parsingButton"
         app:layout_constraintTop_toBottomOf="@+id/parsingButton" />
+    <Button
+        android:id="@+id/UnetButton"
+        android:layout_width="0dp"
+        android:layout_height="70dp"
+        android:text="UNet"
+        android:textAllCaps="false"
+        android:textSize="25sp"
+        app:layout_constraintEnd_toStartOf="@+id/roiButton"
+        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/parsingButton" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
