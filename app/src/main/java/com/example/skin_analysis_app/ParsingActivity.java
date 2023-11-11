@@ -41,6 +41,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -174,6 +175,7 @@ public class ParsingActivity extends AppCompatActivity {
         }
     }
 
+
     // onCreate: Activity가 생성될 때 호출되는 메서드
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -199,7 +201,8 @@ public class ParsingActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else {
+        }
+        else {
             // MainActivity에서 이미지 경로를 가져옴
             picturePath = intent.getStringExtra("IMAGE_PATH");
             picturePathUri = Uri.parse(intent.getStringExtra("IMAGE_PATH"));
@@ -218,6 +221,7 @@ public class ParsingActivity extends AppCompatActivity {
         mButtonParsing = findViewById(R.id.parsingButton);
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
+
         // PyTorch 모델(Pt)을 로드
         try {
             mModule = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "face.pt"));
@@ -234,132 +238,11 @@ public class ParsingActivity extends AppCompatActivity {
                 mProgressBar.setVisibility(ProgressBar.VISIBLE);
                 mButtonParsing.setText(getString(R.string.run_model));
 
-                // 새 스레드를 시작하여 이미지 파싱을 수행
-                Thread parsingTread = new Thread(new Runnable() {
-                    // run: 이미지를 처리하고 파싱하는 주요 함수
-                    @Override
-                    public void run() {
-                        // 이미지를 리사이즈 하는 부분(createScaledBitmap)
-                        //        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
-
-                        // 이미지를 리사이즈 하는 부분(OpenCV)
-                        Mat mat = new Mat();
-                        Utils.bitmapToMat(mBitmap, mat); // Bitmap을 Mat으로 변환
-
-                        Mat resizedMat = new Mat();
-                        Imgproc.resize(mat, resizedMat, new Size(512, 512), 0, 0, Imgproc.INTER_NEAREST); // INTER_NEAREST 사용
-
-                        Bitmap resizedBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
-                        Utils.matToBitmap(resizedMat, resizedBitmap); // 리사이즈된 Mat을 다시 Bitmap으로 변환
-
-
-                        // 이미지를 전처리 하는 부분
-                        final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
-                        final float[] inputs = inputTensor.getDataAsFloatArray();
-
-                        // 모델을 사용하여 예측하는 부분
-                        final long startTime = SystemClock.elapsedRealtime();
-                        IValue[] outputs = mModule.forward(IValue.from(inputTensor)).toTuple();
-                        final Tensor outputTensor = outputs[0].toTensor();
-                        Log.d("parsing", "Output tensor shape: " + java.util.Arrays.toString(outputTensor.shape()));
-
-                        final long inferenceTime = SystemClock.elapsedRealtime() - startTime;
-                        Log.d("parsing", "inference time (ms): " + inferenceTime);
-
-                        final float[] scores = outputTensor.getDataAsFloatArray();
-
-                        // 결과를 처리하고 화면에 표시하는 부분
-                        int width = 512;
-                        int height = 512;
-                        int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
-                        int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
-                        for (int j = 0; j < height; j++) {
-                            for (int k = 0; k < width; k++) {
-                                int maxClass = 0;
-                                double maxnum = -Double.MAX_VALUE;
-                                for (int i = 0; i < N_CLASSES; i++) {
-                                    float score = scores[(i * width * height) + (j * width) + k];
-                                    if (score > maxnum) {
-                                        maxnum = score;
-                                        maxClass = i;
-                                    }
-                                }
-                                ColorValues[j * width + k] = getColorForClass(maxClass);
-                                int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
-                                classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
-
-                            }
-                        }
-                        final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
-                        final Bitmap out2Bitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
-
-//
-//                        // Bitmap 파일 저장
-//                        saveBitmapAsPNG(outBitmap, "outBitmap_512");
-//                        saveBitmapAsPNG(out2Bitmap, "out2Bitmap_512");
-//
-//                        // 원본 이미지 크기로 결과 이미지 스케일링(createScaledBitmap)
-//                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
-//                        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
-
-                        // 원본 이미지 크기로 결과 이미지 스케일링
-                        Mat outMat = new Mat();
-                        Utils.bitmapToMat(outBitmap, outMat);
-                        Mat scaledOutMat = new Mat();
-                        Imgproc.resize(outMat, scaledOutMat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
-
-                        Bitmap scaledBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-                        Utils.matToBitmap(scaledOutMat, scaledBitmap);
-
-
-                        Mat out2Mat = new Mat();
-                        Utils.bitmapToMat(out2Bitmap, out2Mat);
-                        Mat scaledOut2Mat = new Mat();
-                        Imgproc.resize(out2Mat, scaledOut2Mat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
-
-                        Bitmap scaled2Bitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-                        Utils.matToBitmap(scaledOut2Mat, scaled2Bitmap);
-
-                        if (scaledBitmap.getWidth() > scaledBitmap.getHeight()) {
-                            finalBitmap = rotateBitmap(scaledBitmap, ExifInterface.ORIENTATION_ROTATE_90);
-                        } else {
-                            finalBitmap = scaledBitmap;
-                        }
-
-                        if (scaled2Bitmap.getWidth() > scaled2Bitmap.getHeight()) {
-                            classBitmap = rotateBitmap(scaled2Bitmap, ExifInterface.ORIENTATION_ROTATE_90);
-                        } else {
-                            classBitmap = scaled2Bitmap;
-                        }
-
-//                        // classBitmap 에서 class 번호가 잘 출력 되는지 Pixels 값 테스트
-//                        int[] pixels = new int[classBitmap.getWidth() * classBitmap.getHeight()];
-//                        classBitmap.getPixels(pixels, 0, classBitmap.getWidth(), 0, 0, classBitmap.getWidth(), classBitmap.getHeight());
-//
-//                        for (int i = 0; i < pixels.length; i++) {
-//                            int blue = pixels[i] & 0xFF; // 클래스 번호가 블루 채널에 저장될 것으로 예상
-//                            if (blue != 0) {
-//                                Log.d("PARSING_ACTIVITY", "Pixel " + i + ": Class Number = " + blue);
-//                            }
-//                        }
-
-                        runOnUiThread(() -> {
-                            mImageView.setImageBitmap(finalBitmap);
-                            mProgressBar.setVisibility(ProgressBar.INVISIBLE);
-                            mButtonParsing.setText(R.string.parsing);
-                            mButtonParsing.setEnabled(true);
-                        });
-
-                        //        // Bitmap 파일 저장 Test
-                        //        saveBitmapAsPNG(finalBitmap, "finalBitmap");
-                        //        saveBitmapAsPNG(classBitmap, "classBitmap");
-
-                    }
-                });
-                parsingTread.start();
+                // ParsingRunnable 사용
+                Thread parsingThread = new Thread(new ParsingRunnable(ParsingActivity.this));
+                parsingThread.start();
             }
         });
-
 
         // 뒤로 가기 버튼을 참조하고 클릭 리스너를 설정
         mBackButton = findViewById(R.id.backButton);
@@ -470,27 +353,170 @@ public class ParsingActivity extends AppCompatActivity {
         });
 
 
-        // PyTorch 모델(Pt)을 로드
-        try {
-            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "NL_BA_unerform_loss_unet.pt"));
-        } catch (IOException e) {
-            Log.e("ImageParsing", "Error reading assets", e);
-            finish();
-        }
+//        // PyTorch 모델(Pt)을 로드
+//        try {
+//            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "NL_BA_unerform_loss_unet.pt"));
+//        } catch (IOException e) {
+//            Log.e("ImageParsing", "Error reading assets", e);
+//            finish();
+//        }
 
         mUnetButton = findViewById(R.id.UnetButton);
         mUnetButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
-                Thread unetThread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        // U-Net 작업 수행
-                    }
-                });
+                // UnetRunnable 사용
+                Thread unetThread = new Thread(new UnetRunnable(ParsingActivity.this));
                 unetThread.start();
             }
         });
 
+    }
+
+    // ParsingRunnable 클래스
+    private class ParsingRunnable implements Runnable {
+        private final WeakReference<ParsingActivity> activityReference;
+
+        public ParsingRunnable(ParsingActivity activity) {
+            this.activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void run() {
+            ParsingActivity activity = activityReference.get();
+            if (activity != null) {
+                // 이미지를 리사이즈 하는 부분(createScaledBitmap)
+                //        Bitmap resizedBitmap = Bitmap.createScaledBitmap(mBitmap, 512, 512, true);
+
+                // 이미지를 리사이즈 하는 부분(OpenCV)
+                Mat mat = new Mat();
+                Utils.bitmapToMat(mBitmap, mat); // Bitmap을 Mat으로 변환
+
+                Mat resizedMat = new Mat();
+                Imgproc.resize(mat, resizedMat, new Size(512, 512), 0, 0, Imgproc.INTER_NEAREST); // INTER_NEAREST 사용
+
+                Bitmap resizedBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(resizedMat, resizedBitmap); // 리사이즈된 Mat을 다시 Bitmap으로 변환
+
+
+                // 이미지를 전처리 하는 부분
+                final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                final float[] inputs = inputTensor.getDataAsFloatArray();
+
+                // 모델을 사용하여 예측하는 부분
+                final long startTime = SystemClock.elapsedRealtime();
+                IValue[] outputs = mModule.forward(IValue.from(inputTensor)).toTuple();
+                final Tensor outputTensor = outputs[0].toTensor();
+                Log.d("parsing", "Output tensor shape: " + java.util.Arrays.toString(outputTensor.shape()));
+
+                final long inferenceTime = SystemClock.elapsedRealtime() - startTime;
+                Log.d("parsing", "inference time (ms): " + inferenceTime);
+
+                final float[] scores = outputTensor.getDataAsFloatArray();
+
+                // 결과를 처리하고 화면에 표시하는 부분
+                int width = 512;
+                int height = 512;
+                int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
+                int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
+                for (int j = 0; j < height; j++) {
+                    for (int k = 0; k < width; k++) {
+                        int maxClass = 0;
+                        double maxnum = -Double.MAX_VALUE;
+                        for (int i = 0; i < N_CLASSES; i++) {
+                            float score = scores[(i * width * height) + (j * width) + k];
+                            if (score > maxnum) {
+                                maxnum = score;
+                                maxClass = i;
+                            }
+                        }
+                        ColorValues[j * width + k] = getColorForClass(maxClass);
+                        int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
+                        classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
+
+                    }
+                }
+                final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
+                final Bitmap out2Bitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
+
+//
+//                        // Bitmap 파일 저장
+//                        saveBitmapAsPNG(outBitmap, "outBitmap_512");
+//                        saveBitmapAsPNG(out2Bitmap, "out2Bitmap_512");
+//
+//                        // 원본 이미지 크기로 결과 이미지 스케일링(createScaledBitmap)
+//                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(outBitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+//                        Bitmap scaled2Bitmap = Bitmap.createScaledBitmap(out2Bitmap, mBitmap.getWidth(), mBitmap.getHeight(), true);
+
+                // 원본 이미지 크기로 결과 이미지 스케일링
+                Mat outMat = new Mat();
+                Utils.bitmapToMat(outBitmap, outMat);
+                Mat scaledOutMat = new Mat();
+                Imgproc.resize(outMat, scaledOutMat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+                Bitmap scaledBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(scaledOutMat, scaledBitmap);
+
+
+                Mat out2Mat = new Mat();
+                Utils.bitmapToMat(out2Bitmap, out2Mat);
+                Mat scaledOut2Mat = new Mat();
+                Imgproc.resize(out2Mat, scaledOut2Mat, new Size(mBitmap.getWidth(), mBitmap.getHeight()), 0, 0, Imgproc.INTER_NEAREST);
+
+                Bitmap scaled2Bitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(scaledOut2Mat, scaled2Bitmap);
+
+                if (scaledBitmap.getWidth() > scaledBitmap.getHeight()) {
+                    finalBitmap = rotateBitmap(scaledBitmap, ExifInterface.ORIENTATION_ROTATE_90);
+                } else {
+                    finalBitmap = scaledBitmap;
+                }
+
+                if (scaled2Bitmap.getWidth() > scaled2Bitmap.getHeight()) {
+                    classBitmap = rotateBitmap(scaled2Bitmap, ExifInterface.ORIENTATION_ROTATE_90);
+                } else {
+                    classBitmap = scaled2Bitmap;
+                }
+
+//                        // classBitmap 에서 class 번호가 잘 출력 되는지 Pixels 값 테스트
+//                        int[] pixels = new int[classBitmap.getWidth() * classBitmap.getHeight()];
+//                        classBitmap.getPixels(pixels, 0, classBitmap.getWidth(), 0, 0, classBitmap.getWidth(), classBitmap.getHeight());
+//
+//                        for (int i = 0; i < pixels.length; i++) {
+//                            int blue = pixels[i] & 0xFF; // 클래스 번호가 블루 채널에 저장될 것으로 예상
+//                            if (blue != 0) {
+//                                Log.d("PARSING_ACTIVITY", "Pixel " + i + ": Class Number = " + blue);
+//                            }
+//                        }
+
+                runOnUiThread(() -> {
+                    mImageView.setImageBitmap(finalBitmap);
+                    mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+                    mButtonParsing.setText(R.string.parsing);
+                    mButtonParsing.setEnabled(true);
+                });
+
+                //        // Bitmap 파일 저장 Test
+                //        saveBitmapAsPNG(finalBitmap, "finalBitmap");
+                //        saveBitmapAsPNG(classBitmap, "classBitmap");
+            }
+        }
+    }
+
+    // UnetRunnable 클래스
+    private class UnetRunnable implements Runnable {
+        private final WeakReference<ParsingActivity> activityReference;
+
+        public UnetRunnable(ParsingActivity activity) {
+            this.activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void run() {
+            ParsingActivity activity = activityReference.get();
+            if (activity != null) {
+                // U-Net 관련 코드...
+            }
+        }
     }
 
     // Bitmap 파일 저장 함수
