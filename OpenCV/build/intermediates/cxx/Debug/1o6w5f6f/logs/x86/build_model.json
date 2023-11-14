@@ -6,9 +6,9 @@
     "deprecated": false,
     "default": true
   },
-  "cxxBuildFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\.cxx\\Debug\\1o6w5f6f\\x86",
-  "soFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cxx\\Debug\\1o6w5f6f\\obj\\x86",
-  "soRepublishFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cmake\\debug\\obj\\x86",
+  "cxxBuildFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/.cxx/Debug/1o6w5f6f/x86",
+  "soFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cxx/Debug/1o6w5f6f/obj/x86",
+  "soRepublishFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cmake/debug/obj/x86",
   "abiPlatformVersion": 21,
   "cmake": {
     "effectiveConfiguration": {
@@ -36,15 +36,15 @@
     "implicitBuildTargetSet": [],
     "cmakeSettingsConfiguration": "android-gradle-plugin-predetermined-name",
     "module": {
-      "cxxFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\.cxx",
-      "intermediatesBaseFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates",
-      "intermediatesFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cxx",
+      "cxxFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/.cxx",
+      "intermediatesBaseFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates",
+      "intermediatesFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cxx",
       "gradleModulePathName": ":OpenCV",
-      "moduleRootFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV",
-      "moduleBuildFile": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build.gradle",
-      "makeFile": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\libcxx_helper\\CMakeLists.txt",
+      "moduleRootFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV",
+      "moduleBuildFile": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build.gradle",
+      "makeFile": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/libcxx_helper/CMakeLists.txt",
       "buildSystem": "CMAKE",
-      "ndkFolder": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620",
+      "ndkFolder": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620",
       "ndkVersion": "23.1.7779620",
       "ndkSupportedAbiList": [
         "ARMEABI_V7A",
@@ -108,32 +108,32 @@
           "default": true
         }
       ],
-      "cmakeToolchainFile": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\build\\cmake\\android.toolchain.cmake",
+      "cmakeToolchainFile": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/build/cmake/android.toolchain.cmake",
       "cmake": {
         "isValidCmakeAvailable": true,
-        "cmakeExe": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\cmake.exe",
+        "cmakeExe": "/Users/pakyoong/Library/Android/sdk/cmake/3.22.1/bin/cmake",
         "minimumCmakeVersion": "3.22.1"
       },
       "stlSharedObjectMap": {
         "LIBCXX_SHARED": {
-          "ARMEABI_V7A": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\libc++_shared.so",
-          "ARM64_V8A": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\libc++_shared.so",
-          "X86": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\i686-linux-android\\libc++_shared.so",
-          "X86_64": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\x86_64-linux-android\\libc++_shared.so"
+          "ARMEABI_V7A": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so",
+          "ARM64_V8A": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so",
+          "X86": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so",
+          "X86_64": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so"
         },
         "LIBCXX_STATIC": {},
         "NONE": {},
         "SYSTEM": {}
       },
       "project": {
-        "rootBuildGradleFolder": "D:\\AndroidStudioProjects\\skin_analysis_app",
-        "sdkFolder": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk",
+        "rootBuildGradleFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app",
+        "sdkFolder": "/Users/pakyoong/Library/Android/sdk",
         "isBuildOnlyTargetAbiEnabled": true,
         "isCmakeBuildCohabitationEnabled": false,
         "isPrefabEnabled": false
       },
       "outputOptions": [],
-      "ninjaExe": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe"
+      "ninjaExe": "/Users/pakyoong/Library/Android/sdk/cmake/3.22.1/bin/ninja"
     },
     "prefabClassPaths": [],
     "prefabPackages": [],
@@ -144,29 +144,29 @@
   "buildSettings": {
     "environmentVariables": []
   },
-  "prefabFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\.cxx\\Debug\\1o6w5f6f\\prefab\\x86",
+  "prefabFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/.cxx/Debug/1o6w5f6f/prefab/x86",
   "isActiveAbi": true,
   "fullConfigurationHash": "1o6w5f6f514i3a4x2i3w0274a1n1w675o2m2zw626p5y724e2v23zy3a1f17",
   "fullConfigurationHashKey": "# Values used to calculate the hash in this folder name.\n# Should not depend on the absolute path of the project itself.\n#   - AGP: 7.4.2.\n#   - $NDK is the path to NDK 23.1.7779620.\n#   - $PROJECT is the path to the parent folder of the root Gradle build file.\n#   - $ABI is the ABI to be built with. The specific value doesn\u0027t contribute to the value of the hash.\n#   - $HASH is the hash value computed from this text.\n#   - $CMAKE is the path to CMake 3.22.1.\n#   - $NINJA is the path to Ninja.\n-H$PROJECT/OpenCV/libcxx_helper\n-DCMAKE_SYSTEM_NAME\u003dAndroid\n-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\n-DCMAKE_SYSTEM_VERSION\u003d21\n-DANDROID_PLATFORM\u003dandroid-21\n-DANDROID_ABI\u003d$ABI\n-DCMAKE_ANDROID_ARCH_ABI\u003d$ABI\n-DANDROID_NDK\u003d$NDK\n-DCMAKE_ANDROID_NDK\u003d$NDK\n-DCMAKE_TOOLCHAIN_FILE\u003d$NDK/build/cmake/android.toolchain.cmake\n-DCMAKE_MAKE_PROGRAM\u003d$NINJA\n-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003d$PROJECT/OpenCV/build/intermediates/cxx/Debug/$HASH/obj/$ABI\n-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003d$PROJECT/OpenCV/build/intermediates/cxx/Debug/$HASH/obj/$ABI\n-DCMAKE_BUILD_TYPE\u003dDebug\n-B$PROJECT/OpenCV/.cxx/Debug/$HASH/$ABI\n-GNinja\n-DANDROID_STL\u003dc++_shared",
   "configurationArguments": [
-    "-HD:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\libcxx_helper",
+    "-H/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/libcxx_helper",
     "-DCMAKE_SYSTEM_NAME\u003dAndroid",
     "-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON",
     "-DCMAKE_SYSTEM_VERSION\u003d21",
     "-DANDROID_PLATFORM\u003dandroid-21",
     "-DANDROID_ABI\u003dx86",
     "-DCMAKE_ANDROID_ARCH_ABI\u003dx86",
-    "-DANDROID_NDK\u003dC:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620",
-    "-DCMAKE_ANDROID_NDK\u003dC:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620",
-    "-DCMAKE_TOOLCHAIN_FILE\u003dC:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\build\\cmake\\android.toolchain.cmake",
-    "-DCMAKE_MAKE_PROGRAM\u003dC:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
-    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dD:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cxx\\Debug\\1o6w5f6f\\obj\\x86",
-    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dD:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cxx\\Debug\\1o6w5f6f\\obj\\x86",
+    "-DANDROID_NDK\u003d/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620",
+    "-DCMAKE_ANDROID_NDK\u003d/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620",
+    "-DCMAKE_TOOLCHAIN_FILE\u003d/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/build/cmake/android.toolchain.cmake",
+    "-DCMAKE_MAKE_PROGRAM\u003d/Users/pakyoong/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003d/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cxx/Debug/1o6w5f6f/obj/x86",
+    "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003d/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cxx/Debug/1o6w5f6f/obj/x86",
     "-DCMAKE_BUILD_TYPE\u003dDebug",
-    "-BD:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\.cxx\\Debug\\1o6w5f6f\\x86",
+    "-B/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/.cxx/Debug/1o6w5f6f/x86",
     "-GNinja",
     "-DANDROID_STL\u003dc++_shared"
   ],
-  "stlLibraryFile": "C:\\Users\\seo\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\i686-linux-android\\libc++_shared.so",
-  "intermediatesParentFolder": "D:\\AndroidStudioProjects\\skin_analysis_app\\OpenCV\\build\\intermediates\\cxx\\Debug\\1o6w5f6f"
+  "stlLibraryFile": "/Users/pakyoong/Library/Android/sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so",
+  "intermediatesParentFolder": "/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/build/intermediates/cxx/Debug/1o6w5f6f"
 }

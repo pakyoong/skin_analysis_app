@@ -59,6 +59,8 @@ public class ParsingActivity extends AppCompatActivity {
     //<editor-fold desc="클래스 선언">
     // 클래스의 수를 상수로 선언
     private static final int N_CLASSES = 19;
+    private static final int N_CLASSES2 = 2;
+    private static final int TARGET_CLASS_INDEX =1;
     public static final String[] LABELS = {
             "background",
             "skin",
@@ -92,6 +94,10 @@ public class ParsingActivity extends AppCompatActivity {
     private Bitmap mBitmap = null;
     private Bitmap finalBitmap = null;
     private Bitmap classBitmap = null;
+    private Bitmap finalBitmap1 = null;
+    private Bitmap classBitmap2 = null;
+    private Bitmap newLeftBitmap = null;
+    private Bitmap newRightBitmap = null;
     private Button mButtonParsing;
     private ProgressBar mProgressBar;
     private Button mBackButton;
@@ -341,9 +347,9 @@ public class ParsingActivity extends AppCompatActivity {
                 Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
                 Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
 
-                    // Mat 객체를 다시 Bitmap으로 변환합니다.
-                Bitmap newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
-                Bitmap newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
+                // Mat 객체를 다시 Bitmap으로 변환합니다.
+                newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
+                newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(newLeftMat, newLeftBitmap);
                 Utils.matToBitmap(newRightMat, newRightBitmap);
 
@@ -353,13 +359,13 @@ public class ParsingActivity extends AppCompatActivity {
         });
 
 
-//        // PyTorch 모델(Pt)을 로드
-//        try {
-//            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "NL_BA_unerform_loss_unet.pt"));
-//        } catch (IOException e) {
-//            Log.e("ImageParsing", "Error reading assets", e);
-//            finish();
-//        }
+        // PyTorch 모델(Pt)을 로드
+        try {
+            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "unet_model.pt"));
+        } catch (IOException e) {
+            Log.e("ImageParsing", "Error reading assets", e);
+            finish();
+        }
 
         mUnetButton = findViewById(R.id.UnetButton);
         mUnetButton.setOnClickListener(new View.OnClickListener() {
@@ -514,8 +520,63 @@ public class ParsingActivity extends AppCompatActivity {
         public void run() {
             ParsingActivity activity = activityReference.get();
             if (activity != null) {
-                // U-Net 관련 코드...
+                // 첫 번째 이미지 처리
+                final Tensor inputTensor1 = TensorImageUtils.bitmapToFloat32Tensor(newLeftBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                final Tensor outputTensor1 = mModule2.forward(IValue.from(inputTensor1)).toTensor();
+
+                // 두 번째 이미지 처리
+                final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
+
+                // 모델 출력에서 추출된 영역 표시
+                Bitmap overlayBitmap1 = createOverlay(newLeftBitmap, outputTensor1);
+                Bitmap overlayBitmap2 = createOverlay(newRightBitmap, outputTensor2);
+
+                // 결과 이미지 화면에 표시
+                runOnUiThread(() -> {
+                    mImageView.setImageBitmap(overlayBitmap1);
+                    // mImageView2.setImageBitmap(overlayBitmap2); // 다른 이미지 뷰에 두 번째 이미지 결과 표시
+                });
             }
+        }
+
+        // 모델 출력을 사용하여 오버레이 생성하는 함수
+        private Bitmap createOverlay(Bitmap originalBitmap, Tensor outputTensor) {
+            int width = originalBitmap.getWidth();
+            int height = originalBitmap.getHeight();
+            Bitmap overlayBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+            // 모델 출력을 픽셀 데이터로 변환
+            final float[] scores = outputTensor.getDataAsFloatArray();
+
+            // 오버레이 생성
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    // 모델 출력에서 최대 점수를 가진 클래스 찾기
+                    float maxScore = -Float.MAX_VALUE;
+                    int maxClassIndex = -1;
+                    for (int c = 0; c < N_CLASSES2; c++) {
+                        float score = scores[c * width * height + y * width + x];
+                        if (score > maxScore) {
+                            maxScore = score;
+                            maxClassIndex = c;
+                        }
+                    }
+
+                    // 특정 클래스에 속하는 경우 다른 색상으로 표시
+                    if (maxClassIndex == TARGET_CLASS_INDEX) {
+                        // 주름에 해당하는 픽셀을 빨간색으로 표시
+                        overlayBitmap.setPixel(x, y, Color.BLUE);
+
+                        // 주름 클래스를 찾은 경우 로그 남기기
+                        Log.d("Unet", "Wrinkle found at (x, y): (" + x + ", " + y + ")");
+                    } else {
+                        int pixel = originalBitmap.getPixel(x, y);
+                        overlayBitmap.setPixel(x, y, pixel);
+                    }
+                }
+            }
+            return overlayBitmap;
         }
     }
 

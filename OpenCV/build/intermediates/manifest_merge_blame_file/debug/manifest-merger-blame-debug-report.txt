@@ -3,6 +3,6 @@
 3    package="org.opencv" >
 4
 5    <uses-sdk android:minSdkVersion="21" />
-5-->D:\AndroidStudioProjects\skin_analysis_app\OpenCV\java\AndroidManifest.xml
+5-->/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/java/AndroidManifest.xml
 6
 7</manifest>

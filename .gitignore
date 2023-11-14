@@ -14,4 +14,4 @@
 .cxx
 local.properties
 /app/src/main/assets/face.pt
-/app/src/main/assets/NL_BA_unerform_loss_unet.pt
+/app/src/main/assets/unet_model.pt

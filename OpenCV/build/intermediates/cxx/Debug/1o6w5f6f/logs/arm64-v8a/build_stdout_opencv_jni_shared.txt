@@ -1,2 +1,2 @@
-ninja: Entering directory `D:\AndroidStudioProjects\skin_analysis_app\OpenCV\.cxx\Debug\1o6w5f6f\arm64-v8a'
+ninja: Entering directory `/Users/pakyoong/StudioProjects/skin_analysis_app/OpenCV/.cxx/Debug/1o6w5f6f/arm64-v8a'
 ninja: no work to do.
