@@ -36,6 +36,7 @@ import org.pytorch.Module;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
+import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -353,6 +355,7 @@ public class ParsingActivity extends AppCompatActivity {
                 newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(newLeftMat, newLeftBitmap);
                 Utils.matToBitmap(newRightMat, newRightBitmap);
+                saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
 
                 // ImageView에 새로운 Bitmap을 설정합니다.
                 mImageView.setImageBitmap(newRightBitmap);
@@ -529,13 +532,23 @@ public class ParsingActivity extends AppCompatActivity {
                 final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
                 final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
 
+//
+//                saveTensorToFile(inputTensor1, "inputTensor1");
+//                saveTensorToFile(outputTensor1, "outputTensor1");
 
-                saveTensorToFile(inputTensor1, "inputTensor1");
-                saveTensorToFile(outputTensor1, "outputTensor1");
+                // 세그먼테이션 이미지 생성
+                Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
+                Bitmap segmentationBitmap2 = createSegmentationImage(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight());
 
-                // 모델 출력에서 추출된 영역 표시
-                Bitmap overlayBitmap1 = createOverlay(newLeftBitmap, outputTensor1);
-                Bitmap overlayBitmap2 = createOverlay(newRightBitmap, outputTensor2);
+                // 세그먼테이션 이미지 저장
+                saveBitmapAsPNG(segmentationBitmap1, "segmentation1");
+                saveBitmapAsPNG(segmentationBitmap2, "segmentation2");
+
+                // 오버레이 적용
+                Bitmap overlayBitmap1 = applyOverlayOnImage(newLeftBitmap, segmentationBitmap1);
+                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap, segmentationBitmap2);
+
+                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
 
                 // 결과 이미지 화면에 표시
                 runOnUiThread(() -> {
@@ -545,19 +558,13 @@ public class ParsingActivity extends AppCompatActivity {
             }
         }
 
-        // 모델 출력을 사용하여 오버레이 생성하는 함수
-        private Bitmap createOverlay(Bitmap originalBitmap, Tensor outputTensor) {
-            int width = originalBitmap.getWidth();
-            int height = originalBitmap.getHeight();
-            Bitmap overlayBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-
-            // 모델 출력을 픽셀 데이터로 변환
+        // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
+        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height) {
+            Bitmap segmentationBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             final float[] scores = outputTensor.getDataAsFloatArray();
 
-            // 오버레이 생성
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    // 모델 출력에서 최대 점수를 가진 클래스 찾기
                     float maxScore = -Float.MAX_VALUE;
                     int maxClassIndex = -1;
                     for (int c = 0; c < N_CLASSES2; c++) {
@@ -568,22 +575,64 @@ public class ParsingActivity extends AppCompatActivity {
                         }
                     }
 
-                    // 특정 클래스에 속하는 경우 다른 색상으로 표시
                     if (maxClassIndex == TARGET_CLASS_INDEX) {
-                        // 주름에 해당하는 픽셀을 파란색으로 표시
-                        overlayBitmap.setPixel(x, y, Color.BLUE);
-
-                        // 주름 클래스를 찾은 경우 로그 남기기
-//                        Log.d("Unet", "Wrinkle found at (x, y): (" + x + ", " + y + ")");
+                        segmentationBitmap.setPixel(x, y, Color.BLUE);
                     } else {
-                        int pixel = originalBitmap.getPixel(x, y);
-                        overlayBitmap.setPixel(x, y, pixel);
+                        segmentationBitmap.setPixel(x, y, Color.BLACK);
                     }
                 }
             }
+            return segmentationBitmap;
+        }
+        // 세그먼테이션 이미지를 원본 이미지에 오버레이하는 함수
+        private Bitmap applyOverlayOnImage(Bitmap originalBitmap, Bitmap segmentationBitmap) {
+            Bitmap overlayBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(overlayBitmap);
+            canvas.drawBitmap(originalBitmap, 0, 0, null);
+            canvas.drawBitmap(segmentationBitmap, 0, 0, null); // Add blend mode if needed
             return overlayBitmap;
         }
     }
+
+    private void saveBitmapToBinary(Bitmap bitmap, String filename) {
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(storageDir, filename + ".bin");
+
+        try (FileOutputStream fos = new FileOutputStream(file);
+             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int pixel = bitmap.getPixel(x, y);
+                    bos.write(pixelToByteArray(pixel));
+                }
+            }
+
+            bos.flush();
+
+            Log.d("SaveBitmapToBinary", "File saved successfully: " + file.getAbsolutePath());
+        } catch (IOException e) {
+            Log.e("SaveBitmapToBinary", "Error saving file: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private byte[] intToByteArray(int value) {
+        return ByteBuffer.allocate(4).putInt(value).array();
+    }
+    private byte[] pixelToByteArray(int pixel) {
+        byte[] byteArray = new byte[4];
+        byteArray[0] = (byte) ((pixel >> 24) & 0xFF); // alpha
+        byteArray[1] = (byte) ((pixel >> 16) & 0xFF); // red
+        byteArray[2] = (byte) ((pixel >> 8) & 0xFF);  // green
+        byteArray[3] = (byte) (pixel & 0xFF);         // blue
+        return byteArray;
+    }
+
 
     private void saveTensorToFile(Tensor tensor, String filename) {
         // 텐서 데이터를 float 배열로 가져오기
