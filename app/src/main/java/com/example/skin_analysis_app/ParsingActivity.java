@@ -670,7 +670,11 @@ public class ParsingActivity extends AppCompatActivity {
         try (FileOutputStream outStream = new FileOutputStream(imageFile)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
             outStream.flush();
+            // 성공 로그 추가
+            Log.d("SaveBitmap", "Bitmap saved successfully: " + imageFile.getAbsolutePath());
         } catch (IOException e) {
+            // 실패 로그 추가
+            Log.e("SaveBitmap", "Error saving bitmap: " + e.getMessage());
             e.printStackTrace();
         }
     }
