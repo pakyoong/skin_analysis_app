@@ -36,6 +36,7 @@ import org.pytorch.Module;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -528,6 +529,10 @@ public class ParsingActivity extends AppCompatActivity {
                 final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
                 final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
 
+
+                saveTensorToFile(inputTensor1, "inputTensor1");
+                saveTensorToFile(outputTensor1, "outputTensor1");
+
                 // 모델 출력에서 추출된 영역 표시
                 Bitmap overlayBitmap1 = createOverlay(newLeftBitmap, outputTensor1);
                 Bitmap overlayBitmap2 = createOverlay(newRightBitmap, outputTensor2);
@@ -569,7 +574,7 @@ public class ParsingActivity extends AppCompatActivity {
                         overlayBitmap.setPixel(x, y, Color.BLUE);
 
                         // 주름 클래스를 찾은 경우 로그 남기기
-                        Log.d("Unet", "Wrinkle found at (x, y): (" + x + ", " + y + ")");
+//                        Log.d("Unet", "Wrinkle found at (x, y): (" + x + ", " + y + ")");
                     } else {
                         int pixel = originalBitmap.getPixel(x, y);
                         overlayBitmap.setPixel(x, y, pixel);
@@ -579,6 +584,33 @@ public class ParsingActivity extends AppCompatActivity {
             return overlayBitmap;
         }
     }
+
+    private void saveTensorToFile(Tensor tensor, String filename) {
+        // 텐서 데이터를 float 배열로 가져오기
+        float[] data = tensor.getDataAsFloatArray();
+
+        // 저장할 디렉토리 설정
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(storageDir, filename + ".bin");
+
+        // 파일 스트림 생성 및 데이터 기록
+        try (FileOutputStream fos = new FileOutputStream(file);
+             DataOutputStream dos = new DataOutputStream(fos)) {
+
+
+            // 배열 데이터 기록
+            for (float f : data) {
+                dos.writeFloat(f);
+            }
+            // 로그 메시지 추가
+            Log.d("SaveTensor", "File saved successfully: " + file.getAbsolutePath());
+        } catch (IOException e) {
+            // 파일 저장 실패 시 로그 메시지 추가
+            Log.e("SaveTensor", "Error saving file: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 
     // Bitmap 파일 저장 함수
     private void saveBitmapAsPNG(Bitmap bitmap, String filename) {

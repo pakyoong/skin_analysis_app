@@ -3,9 +3,15 @@ package com.example.skin_analysis_app;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -19,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     // 변수 선언: 앨범 버튼, 사진 경로, 사용자 이름 입력 필드, 확인 버튼, 이름 변경 버튼
     private Button mAlbumButton;
     private String picturePath = null;
+    private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
 
 
     private Button mConfirmNameButton;
@@ -36,6 +43,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            // 권한 요청
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+        }
 
         // 각 버튼과 사용자 이름 입력 필드를 레이아웃에서 찾아 변수에 할당
         mConfirmNameButton = findViewById(R.id.confirmNameButton);
@@ -112,6 +128,23 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // 권한 승인 후 할 작업
+                } else {
+                    // 권한 거부 처리
+                }
+                return;
+            }
+        }
+    }
+
 
 
     // URI에서 실제 경로를 가져오는 함수
