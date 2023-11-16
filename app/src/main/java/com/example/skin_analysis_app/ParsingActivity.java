@@ -565,7 +565,7 @@ public class ParsingActivity extends AppCompatActivity {
 
                     // 특정 클래스에 속하는 경우 다른 색상으로 표시
                     if (maxClassIndex == TARGET_CLASS_INDEX) {
-                        // 주름에 해당하는 픽셀을 빨간색으로 표시
+                        // 주름에 해당하는 픽셀을 파란색으로 표시
                         overlayBitmap.setPixel(x, y, Color.BLUE);
 
                         // 주름 클래스를 찾은 경우 로그 남기기

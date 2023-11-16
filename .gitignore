@@ -15,3 +15,4 @@
 local.properties
 /app/src/main/assets/face.pt
 /app/src/main/assets/unet_model.pt
+/app/src/main/assets/unet_model2.pt
