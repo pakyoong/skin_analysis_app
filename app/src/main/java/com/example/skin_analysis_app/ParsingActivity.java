@@ -1133,28 +1133,23 @@ public class ParsingActivity extends AppCompatActivity {
     }
 
     public Mat letterboxImage(Mat image, Size expectedSize) {
-        // Get the dimensions of the input image
         int ih = image.rows();
         int iw = image.cols();
         int eh = (int) expectedSize.height;
         int ew = (int) expectedSize.width;
 
-        // Calculate the scale to maintain aspect ratio
         double scale = Math.min((double) eh / ih, (double) ew / iw);
         int nh = (int) (ih * scale);
         int nw = (int) (iw * scale);
 
-        // Resize the image
         Mat resizedImage = new Mat();
         Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_CUBIC);
 
         Mat newImage = Mat.zeros(eh, ew, image.type());
 
-        // Calculate the top-left corner coordinates of where to place the resized image
         int top = (eh - nh) / 2;
         int left = (ew - nw) / 2;
 
-        // Place the resized image in the center of the new image
         Mat subMat = newImage.submat(top, top + nh, left, left + nw);
         resizedImage.copyTo(subMat);
 
