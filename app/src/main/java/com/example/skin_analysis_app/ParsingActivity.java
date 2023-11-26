@@ -25,6 +25,7 @@ import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Point;
@@ -37,8 +38,10 @@ import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,6 +49,7 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -311,9 +315,8 @@ public class ParsingActivity extends AppCompatActivity {
                     Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(0, 0, 0), -1);
                 }
 
-                // Mat 객체를 다시 Bitmap으로 변환
-                Utils.matToBitmap(newImgMat, newBitmap);
-
+                logMatSize(newImgMat, "newImgMat");  // newImgMat의 해상도 로그 출력
+                saveMatToBinary(newImgMat, "newImgMat");
 
                 int cropXmin = roi_xmin;
                 int cropXmax = roi_xmax;
@@ -322,43 +325,45 @@ public class ParsingActivity extends AppCompatActivity {
                 int cropW = cropXmax - cropXmin;
                 int cropH = cropYmax - cropYmin;
 
-                // 자르려는 크기가 비트맵의 범위를 넘어서지 않도록 조정
-                cropXmin = Math.max(0, cropXmin);
-                cropYmin = Math.max(0, cropYmin);
-                cropW = Math.min(newBitmap.getWidth() - cropXmin, cropW);
-                cropH = Math.min(newBitmap.getHeight() - cropYmin, cropH);
-                // 새 비트맵에서 지정된 영역을 잘라냄
-                Bitmap cropNewImg = Bitmap.createBitmap(newBitmap, cropXmin, cropYmin, cropW, cropH);
+                Rect cropRect = new Rect(cropXmin, cropYmin, cropW, cropH);
+                Mat cropNewImgMat = new Mat(newImgMat, cropRect);
+                saveMatToBinary(cropNewImgMat, "cropNewImgMat");
+                logMatSize(cropNewImgMat, "cropNewImgMat");  // cropNewImgMat의 해상도 로그 출력
 
-
-                // cropNewImg의 크기를 가져옴
-                int width = cropNewImg.getWidth();
-                int height = cropNewImg.getHeight();
+                // cropNewImgMat 크기와 반 크기 계산
+                int width = cropNewImgMat.cols();
+                int height = cropNewImgMat.rows();
                 int halfWidth = width / 2;
 
-                // cropNewImg를 수평으로 반으로 나누어 왼쪽과 오른쪽 이미지를 생성
-                Bitmap cropNewLeft = Bitmap.createBitmap(cropNewImg, 0, 0, halfWidth, height);
-                Bitmap cropNewRight = Bitmap.createBitmap(cropNewImg, halfWidth, 0, halfWidth, height);
+                // 왼쪽 영역 정의
+                Rect leftRect = new Rect(0, 0, halfWidth, height);
+                Mat cropNewLeftMat = new Mat(cropNewImgMat, leftRect);
 
-                // cropNewLeft과 cropNewRight을 Mat 객체로 변환합니다.
-                Mat cropNewLeftMat = new Mat();
-                Mat cropNewRightMat = new Mat();
-                Utils.bitmapToMat(cropNewLeft, cropNewLeftMat);
-                Utils.bitmapToMat(cropNewRight, cropNewRightMat);
+                // 오른쪽 영역 정의
+                Rect rightRect = new Rect(halfWidth, 0, halfWidth, height);
+                Mat cropNewRightMat = new Mat(cropNewImgMat, rightRect);
 
-                // letterboxImage 함수를 사용하여 이미지 크기를 조정합니다.
+                // letterboxImage 함수를 사용하여 이미지 크기 조정
                 Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
                 Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
 
-                // Mat 객체를 다시 Bitmap으로 변환합니다.
+
+                // 크롭된 Mat 객체를 다시 Bitmap으로 변환
+                Bitmap cropNewImg = Bitmap.createBitmap(cropNewImgMat.cols(), cropNewImgMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(cropNewImgMat, cropNewImg);
+
+                // Mat 객체를 다시 Bitmap으로 변환
                 newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
                 newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(newLeftMat, newLeftBitmap);
                 Utils.matToBitmap(newRightMat, newRightBitmap);
+
+                // 파일로 저장
                 saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
 
                 // ImageView에 새로운 Bitmap을 설정합니다.
-                mImageView.setImageBitmap(newRightBitmap);
+                mImageView.setImageBitmap(newLeftBitmap);
+
             }
         });
 
@@ -381,7 +386,14 @@ public class ParsingActivity extends AppCompatActivity {
         });
 
     }
+    // Mat 객체의 해상도를 로그로 출력하는 코드
+    private void logMatSize(Mat mat, String matName) {
+        int width = mat.cols();  // Mat 객체의 너비
+        int height = mat.rows(); // Mat 객체의 높이
 
+        // 로그 메시지 출력
+        Log.d("MatSize", matName + " size: Width = " + width + ", Height = " + height);
+    }
     // ParsingRunnable 클래스
     private class ParsingRunnable implements Runnable {
         private final WeakReference<ParsingActivity> activityReference;
@@ -524,17 +536,95 @@ public class ParsingActivity extends AppCompatActivity {
         public void run() {
             ParsingActivity activity = activityReference.get();
             if (activity != null) {
-                // 첫 번째 이미지 처리
-                final Tensor inputTensor1 = TensorImageUtils.bitmapToFloat32Tensor(newLeftBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+
+                Mat leftImgMat = new Mat();
+                Utils.bitmapToMat(newLeftBitmap, leftImgMat);
+                leftImgMat.convertTo(leftImgMat, CvType.CV_32F); // float로 변환
+
+                // Mat 객체를 RGB 채널로 분리
+                List<Mat> rgb = new ArrayList<>(3);
+                Core.split(leftImgMat, rgb);  // leftImgMat에서 RGB 채널 분리
+
+// 각 채널을 float 배열로 변환
+                float[] rValues = new float[640 * 640];
+                float[] gValues = new float[640 * 640];
+                float[] bValues = new float[640 * 640];
+                rgb.get(0).get(0, 0, rValues);  // R 채널
+                rgb.get(1).get(0, 0, gValues);  // G 채널
+                rgb.get(2).get(0, 0, bValues);  // B 채널
+
+                for (int i = 0; i < rValues.length; i++) {
+                    rValues[i] = (rValues[i] / 255.0f - 0.485f) / 0.229f;
+                    gValues[i] = (gValues[i] / 255.0f - 0.485f) / 0.229f;
+                    bValues[i] = (bValues[i] / 255.0f - 0.406f) / 0.225f;
+                }
+
+                // RGB 배열을 하나의 배열로 결합
+                float[] rgbValues = new float[3 * 640 * 640];
+                System.arraycopy(rValues, 0, rgbValues, 0, rValues.length);
+                System.arraycopy(gValues, 0, rgbValues, rValues.length, gValues.length);
+                System.arraycopy(bValues, 0, rgbValues, rValues.length + gValues.length, bValues.length);
+
+                // RGB 배열을 사용하여 텐서 생성
+                final Tensor inputTensor1 = Tensor.fromBlob(rgbValues, new long[]{1, 3, 640, 640});
+
+
+                // 모델에 텐서를 전달하고 출력 텐서를 얻는 과정
+                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor1.shape()));
                 final Tensor outputTensor1 = mModule2.forward(IValue.from(inputTensor1)).toTensor();
 
-                // 두 번째 이미지 처리
-                final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+                // 두 번째 이미지 처리 (newRightBitmap)
+                Mat rightImgMat = new Mat();
+                Utils.bitmapToMat(newRightBitmap, rightImgMat);
+                rightImgMat.convertTo(rightImgMat, CvType.CV_32F); // float로 변환
+
+                // Mat 객체를 RGB 채널로 분리
+                List<Mat> rgbRight = new ArrayList<>(3);
+                Core.split(rightImgMat, rgbRight);  // rightImgMat에서 RGB 채널 분리
+
+                // 각 채널을 float 배열로 변환
+                float[] rValuesRight = new float[640 * 640];
+                float[] gValuesRight = new float[640 * 640];
+                float[] bValuesRight = new float[640 * 640];
+                rgbRight.get(0).get(0, 0, rValuesRight);  // R 채널
+                rgbRight.get(1).get(0, 0, gValuesRight);  // G 채널
+                rgbRight.get(2).get(0, 0, bValuesRight);  // B 채널
+
+                for (int i = 0; i < rValuesRight.length; i++) {
+                    rValuesRight[i] = (rValuesRight[i] / 255.0f - 0.485f) / 0.229f;
+                    gValuesRight[i] = (gValuesRight[i] / 255.0f - 0.456f) / 0.224f;
+                    bValuesRight[i] = (bValuesRight[i] / 255.0f - 0.406f) / 0.225f;
+                }
+
+                // RGB 배열을 하나의 배열로 결합
+                float[] rgbValuesRight = new float[3 * 640 * 640];
+                System.arraycopy(rValuesRight, 0, rgbValuesRight, 0, rValuesRight.length);
+                System.arraycopy(gValuesRight, 0, rgbValuesRight, rValuesRight.length, gValuesRight.length);
+                System.arraycopy(bValuesRight, 0, rgbValuesRight, rValuesRight.length + gValuesRight.length, bValuesRight.length);
+
+                // RGB 배열을 사용하여 텐서 생성
+                Tensor inputTensor2 = Tensor.fromBlob(rgbValuesRight, new long[]{1, 3, 640, 640});
+
+                // 모델에 텐서를 전달하고 출력 텐서를 얻는 과정
+                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor2.shape()));
                 final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
 
+
+//                // 첫 번째 이미지 처리
+//                final Tensor inputTensor1 = TensorImageUtils.bitmapToFloat32Tensor(newLeftBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+//                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor1.shape()));
+//                final Tensor outputTensor1 = mModule2.forward(IValue.from(inputTensor1)).toTensor();
 //
-//                saveTensorToFile(inputTensor1, "inputTensor1");
-//                saveTensorToFile(outputTensor1, "outputTensor1");
+//                // 두 번째 이미지 처리
+//                final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+//                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor2.shape()));
+//                final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
+
+
+//
+                saveTensorToFile(inputTensor1, "inputTensor1");
+                checkSavedTensorFile("inputTensor1.bin");
+                saveTensorToFile(outputTensor1, "outputTensor1");
 
                 // 세그먼테이션 이미지 생성
                 Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
@@ -604,7 +694,6 @@ public class ParsingActivity extends AppCompatActivity {
             int width = bitmap.getWidth();
             int height = bitmap.getHeight();
 
-
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int pixel = bitmap.getPixel(x, y);
@@ -621,22 +710,46 @@ public class ParsingActivity extends AppCompatActivity {
         }
     }
 
-    private byte[] intToByteArray(int value) {
-        return ByteBuffer.allocate(4).putInt(value).array();
-    }
     private byte[] pixelToByteArray(int pixel) {
-        byte[] byteArray = new byte[4];
-        byteArray[0] = (byte) ((pixel >> 24) & 0xFF); // alpha
-        byteArray[1] = (byte) ((pixel >> 16) & 0xFF); // red
-        byteArray[2] = (byte) ((pixel >> 8) & 0xFF);  // green
-        byteArray[3] = (byte) (pixel & 0xFF);         // blue
+        byte[] byteArray = new byte[3]; // 알파 채널을 제외한 3바이트 배열
+        byteArray[0] = (byte) ((pixel >> 16) & 0xFF); // red
+        byteArray[1] = (byte) ((pixel >> 8) & 0xFF);  // green
+        byteArray[2] = (byte) (pixel & 0xFF);         // blue
         return byteArray;
     }
 
+    private void saveMatToBinary(Mat mat, String filename) {
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(storageDir, filename + ".bin");
+
+        try (FileOutputStream fos = new FileOutputStream(file);
+             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+
+            int width = mat.cols();
+            int height = mat.rows();
+            int type = mat.type();
+
+            // 각 픽셀을 바이트 배열로 변환
+            byte[] buffer = new byte[width * height * CvType.channels(type)];
+            mat.get(0, 0, buffer);
+
+            // 파일에 바이트 배열 기록
+            bos.write(buffer);
+            bos.flush();
+
+            Log.d("SaveMatToBinary", "File saved successfully: " + file.getAbsolutePath());
+        } catch (IOException e) {
+            Log.e("SaveMatToBinary", "Error saving file: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     private void saveTensorToFile(Tensor tensor, String filename) {
         // 텐서 데이터를 float 배열로 가져오기
         float[] data = tensor.getDataAsFloatArray();
+
+        // 로그 출력
+        Log.d("TensorDataLength", "Data length: " + data.length);
 
         // 저장할 디렉토리 설정
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -645,8 +758,6 @@ public class ParsingActivity extends AppCompatActivity {
         // 파일 스트림 생성 및 데이터 기록
         try (FileOutputStream fos = new FileOutputStream(file);
              DataOutputStream dos = new DataOutputStream(fos)) {
-
-
             // 배열 데이터 기록
             for (float f : data) {
                 dos.writeFloat(f);
@@ -656,6 +767,25 @@ public class ParsingActivity extends AppCompatActivity {
         } catch (IOException e) {
             // 파일 저장 실패 시 로그 메시지 추가
             Log.e("SaveTensor", "Error saving file: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void checkSavedTensorFile(String filename) {
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(storageDir, filename + ".bin");
+
+        try (FileInputStream fis = new FileInputStream(file);
+             DataInputStream dis = new DataInputStream(fis)) {
+
+            ArrayList<Float> data = new ArrayList<>();
+            while (dis.available() > 0) {
+                data.add(dis.readFloat());
+            }
+
+            Log.d("CheckSavedTensorFile", "Read data length: " + data.size());
+        } catch (IOException e) {
+            Log.e("CheckSavedTensorFile", "Error reading file: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1143,7 +1273,7 @@ public class ParsingActivity extends AppCompatActivity {
         int nw = (int) (iw * scale);
 
         Mat resizedImage = new Mat();
-        Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_CUBIC);
+        Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_NEAREST);
 
         Mat newImage = Mat.zeros(eh, ew, image.type());
 
