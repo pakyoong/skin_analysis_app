@@ -43,6 +43,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -105,6 +106,8 @@ public class ParsingActivity extends AppCompatActivity {
     private Bitmap classBitmap2 = null;
     private Bitmap newLeftBitmap = null;
     private Bitmap newRightBitmap = null;
+    private Bitmap unet_colorBitmap = null;
+    private Bitmap unet_grayScaleBitmap =null;
     private Button mButtonParsing;
     private ProgressBar mProgressBar;
     private Button mBackButton;
@@ -293,10 +296,10 @@ public class ParsingActivity extends AppCompatActivity {
                 Utils.matToBitmap(imgMat, finalBitmap);
                 mImageView.setImageBitmap(finalBitmap);
                 if (is_leye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 0, 0), -1);
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 0, 0, 255), -1);
                 }
                 if (is_reye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 0, 0), -1);
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 0, 0, 255), -1);
                 }
 
                 Utils.matToBitmap(imgMat, finalBitmap);
@@ -309,10 +312,10 @@ public class ParsingActivity extends AppCompatActivity {
 
                 // 조건에 따라 타원을 그리기
                 if (is_leye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(0, 0, 0), -1);
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(0, 0, 0, 255), -1);
                 }
                 if (is_reye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(0, 0, 0), -1);
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(0, 0, 0, 255), -1);
                 }
 
                 logMatSize(newImgMat, "newImgMat");  // newImgMat의 해상도 로그 출력
@@ -363,7 +366,12 @@ public class ParsingActivity extends AppCompatActivity {
 
                 // ImageView에 새로운 Bitmap을 설정합니다.
                 mImageView.setImageBitmap(newLeftBitmap);
+                // newLeftBitmap의 가로와 세로 길이를 얻기
+                int bitwidth = newLeftBitmap.getWidth();
+                int bitheight = newLeftBitmap.getHeight();
 
+                // 로그 메시지로 크기 출력
+                Log.d("BitmapSize", "newLeftBitmap: Width = " + bitwidth + ", Height = " + bitheight);
             }
         });
 
@@ -422,7 +430,8 @@ public class ParsingActivity extends AppCompatActivity {
 
                 // 이미지를 전처리 하는 부분
                 final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(resizedBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
-                final float[] inputs = inputTensor.getDataAsFloatArray();
+//                saveTensorToFile(inputTensor, "inputTensor");
+                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor.shape()));
 
                 // 모델을 사용하여 예측하는 부분
                 final long startTime = SystemClock.elapsedRealtime();
@@ -435,11 +444,13 @@ public class ParsingActivity extends AppCompatActivity {
 
                 final float[] scores = outputTensor.getDataAsFloatArray();
 
+
                 // 결과를 처리하고 화면에 표시하는 부분
                 int width = 512;
                 int height = 512;
                 int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
                 int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
+
                 for (int j = 0; j < height; j++) {
                     for (int k = 0; k < width; k++) {
                         int maxClass = 0;
@@ -537,94 +548,35 @@ public class ParsingActivity extends AppCompatActivity {
             ParsingActivity activity = activityReference.get();
             if (activity != null) {
 
-                Mat leftImgMat = new Mat();
-                Utils.bitmapToMat(newLeftBitmap, leftImgMat);
-                leftImgMat.convertTo(leftImgMat, CvType.CV_32F); // float로 변환
+                // 첫 번째 이미지 처리
+                final Tensor inputTensor1 = TensorImageUtils.bitmapToFloat32Tensor(newLeftBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
 
-                // Mat 객체를 RGB 채널로 분리
-                List<Mat> rgb = new ArrayList<>(3);
-                Core.split(leftImgMat, rgb);  // leftImgMat에서 RGB 채널 분리
-
-// 각 채널을 float 배열로 변환
-                float[] rValues = new float[640 * 640];
-                float[] gValues = new float[640 * 640];
-                float[] bValues = new float[640 * 640];
-                rgb.get(0).get(0, 0, rValues);  // R 채널
-                rgb.get(1).get(0, 0, gValues);  // G 채널
-                rgb.get(2).get(0, 0, bValues);  // B 채널
-
-                for (int i = 0; i < rValues.length; i++) {
-                    rValues[i] = (rValues[i] / 255.0f - 0.485f) / 0.229f;
-                    gValues[i] = (gValues[i] / 255.0f - 0.485f) / 0.229f;
-                    bValues[i] = (bValues[i] / 255.0f - 0.406f) / 0.225f;
-                }
-
-                // RGB 배열을 하나의 배열로 결합
-                float[] rgbValues = new float[3 * 640 * 640];
-                System.arraycopy(rValues, 0, rgbValues, 0, rValues.length);
-                System.arraycopy(gValues, 0, rgbValues, rValues.length, gValues.length);
-                System.arraycopy(bValues, 0, rgbValues, rValues.length + gValues.length, bValues.length);
-
-                // RGB 배열을 사용하여 텐서 생성
-                final Tensor inputTensor1 = Tensor.fromBlob(rgbValues, new long[]{1, 3, 640, 640});
-
-
-                // 모델에 텐서를 전달하고 출력 텐서를 얻는 과정
-                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor1.shape()));
                 final Tensor outputTensor1 = mModule2.forward(IValue.from(inputTensor1)).toTensor();
-
-                // 두 번째 이미지 처리 (newRightBitmap)
-                Mat rightImgMat = new Mat();
-                Utils.bitmapToMat(newRightBitmap, rightImgMat);
-                rightImgMat.convertTo(rightImgMat, CvType.CV_32F); // float로 변환
-
-                // Mat 객체를 RGB 채널로 분리
-                List<Mat> rgbRight = new ArrayList<>(3);
-                Core.split(rightImgMat, rgbRight);  // rightImgMat에서 RGB 채널 분리
-
-                // 각 채널을 float 배열로 변환
-                float[] rValuesRight = new float[640 * 640];
-                float[] gValuesRight = new float[640 * 640];
-                float[] bValuesRight = new float[640 * 640];
-                rgbRight.get(0).get(0, 0, rValuesRight);  // R 채널
-                rgbRight.get(1).get(0, 0, gValuesRight);  // G 채널
-                rgbRight.get(2).get(0, 0, bValuesRight);  // B 채널
-
-                for (int i = 0; i < rValuesRight.length; i++) {
-                    rValuesRight[i] = (rValuesRight[i] / 255.0f - 0.485f) / 0.229f;
-                    gValuesRight[i] = (gValuesRight[i] / 255.0f - 0.456f) / 0.224f;
-                    bValuesRight[i] = (bValuesRight[i] / 255.0f - 0.406f) / 0.225f;
-                }
-
-                // RGB 배열을 하나의 배열로 결합
-                float[] rgbValuesRight = new float[3 * 640 * 640];
-                System.arraycopy(rValuesRight, 0, rgbValuesRight, 0, rValuesRight.length);
-                System.arraycopy(gValuesRight, 0, rgbValuesRight, rValuesRight.length, gValuesRight.length);
-                System.arraycopy(bValuesRight, 0, rgbValuesRight, rValuesRight.length + gValuesRight.length, bValuesRight.length);
-
-                // RGB 배열을 사용하여 텐서 생성
-                Tensor inputTensor2 = Tensor.fromBlob(rgbValuesRight, new long[]{1, 3, 640, 640});
-
-                // 모델에 텐서를 전달하고 출력 텐서를 얻는 과정
-                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor2.shape()));
-                final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
+                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(outputTensor1.shape()));
 
 
-//                // 첫 번째 이미지 처리
-//                final Tensor inputTensor1 = TensorImageUtils.bitmapToFloat32Tensor(newLeftBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+//                Bitmap tensorBitmap1 = tensorToBitmap(inputTensor1);
+//                saveBitmapAsPNG(tensorBitmap1, "tensorBitmap1");
 //                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor1.shape()));
-//                final Tensor outputTensor1 = mModule2.forward(IValue.from(inputTensor1)).toTensor();
-//
-//                // 두 번째 이미지 처리
-//                final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+
+                // 두 번째 이미지 처리
+                final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+
+                final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
+                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(outputTensor2.shape()));
+
+//                Bitmap tensorBitmap2 = tensorToBitmap(inputTensor2);
+//                saveBitmapAsPNG(tensorBitmap2, "tensorBitmap2");
 //                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor2.shape()));
-//                final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
 
+                // 모델 출력을 사용하여 softmax 점수 계산
+                double[][][] unet_score1 = calculateScores(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
+                double[][][] unet_score2 = calculateScores(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight());
 
-//
-                saveTensorToFile(inputTensor1, "inputTensor1");
-                checkSavedTensorFile("inputTensor1.bin");
-                saveTensorToFile(outputTensor1, "outputTensor1");
+                // 확률을 파일로 저장
+                saveProbabilitiesToFile(unet_score1, "unet_score1");
+                saveProbabilitiesToFile(unet_score2, "unet_score2");
+
 
                 // 세그먼테이션 이미지 생성
                 Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
@@ -633,57 +585,164 @@ public class ParsingActivity extends AppCompatActivity {
                 // 세그먼테이션 이미지 저장
                 saveBitmapAsPNG(segmentationBitmap1, "segmentation1");
                 saveBitmapAsPNG(segmentationBitmap2, "segmentation2");
-
-                // 오버레이 적용
-                Bitmap overlayBitmap1 = applyOverlayOnImage(newLeftBitmap, segmentationBitmap1);
-                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap, segmentationBitmap2);
-
-                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
+//
+//                // 오버레이 적용
+//                Bitmap overlayBitmap1 = applyOverlayOnImage(newLeftBitmap, segmentationBitmap1);
+//                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap, segmentationBitmap2);
+//
+//                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
 
                 // 결과 이미지 화면에 표시
                 runOnUiThread(() -> {
-                    mImageView.setImageBitmap(overlayBitmap1);
+                    mImageView.setImageBitmap(segmentationBitmap1);
                     // mImageView2.setImageBitmap(overlayBitmap2); // 다른 이미지 뷰에 두 번째 이미지 결과 표시
                 });
             }
         }
-
-        // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
-        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height) {
-            Bitmap segmentationBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        private double[][][] calculateScores(Tensor outputTensor, int width, int height) {
             final float[] scores = outputTensor.getDataAsFloatArray();
+            double[][][] classScores = new double[height][width][N_CLASSES2];
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    float maxScore = -Float.MAX_VALUE;
-                    int maxClassIndex = -1;
                     for (int c = 0; c < N_CLASSES2; c++) {
-                        float score = scores[c * width * height + y * width + x];
-                        if (score > maxScore) {
-                            maxScore = score;
-                            maxClassIndex = c;
-                        }
-                    }
-
-                    if (maxClassIndex == TARGET_CLASS_INDEX) {
-                        segmentationBitmap.setPixel(x, y, Color.BLUE);
-                    } else {
-                        segmentationBitmap.setPixel(x, y, Color.BLACK);
+                        float score = scores[(c * width * height) + (y * width) + x];
+                        classScores[y][x][c] = score;
                     }
                 }
             }
+            return classScores;
+        }
+
+
+        // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
+        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height) {
+            final float[] scores = outputTensor.getDataAsFloatArray();
+            int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
+            int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int maxClassIndex = 0;
+                    float maxnum = -Float.MAX_VALUE;
+                    // 각 클래스에 대한 확률을 비교하여 최대 확률을 가진 클래스 선택
+                    for (int c = 0; c < N_CLASSES2; c++) {
+                        float score = scores[(c * width * height) + (y * width) + x];
+                        if (score > maxnum) {
+                            maxnum = score;
+                            maxClassIndex = c;
+                        }
+                    }
+                    ColorValues[y * width + x] = getColorForClass2(maxClassIndex);
+                    int grayValue = maxClassIndex & 0xFF;
+                    classValues[y * width + x] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
+                }
+            }
+
+            unet_colorBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
+            unet_grayScaleBitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
+            final Bitmap segmentationBitmap =unet_colorBitmap;
             return segmentationBitmap;
         }
-        // 세그먼테이션 이미지를 원본 이미지에 오버레이하는 함수
-        private Bitmap applyOverlayOnImage(Bitmap originalBitmap, Bitmap segmentationBitmap) {
-            Bitmap overlayBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(overlayBitmap);
-            canvas.drawBitmap(originalBitmap, 0, 0, null);
-            canvas.drawBitmap(segmentationBitmap, 0, 0, null); // Add blend mode if needed
-            return overlayBitmap;
+
+
+    }
+        private int getColorForClass2(int classIndex) {
+        // 클래스 인덱스에 따라 그레이스케일 값 반환
+        // 예: 클래스 0은 검은색, 클래스 1은 흰색
+        if (classIndex == 0) {
+            return Color.BLACK; // 검은색
+        } else if (classIndex == 1) {
+            return Color.WHITE; // 흰색
+        } else {
+            return Color.GRAY; // 기타 클래스는 회색
         }
     }
 
+    // 정규화된 텐서를 원본 이미지 값으로 변환하는 함수
+    public Bitmap tensorToBitmap(Tensor tensor) {
+        // 텐서의 데이터를 float 배열로 가져옵니다.
+        float[] normalizedTensor = tensor.getDataAsFloatArray();
+        int height = (int) tensor.shape()[2];
+        int width = (int) tensor.shape()[3];
+
+        // PyTorch의 TensorImageUtils에서 사용된 평균 및 표준편차 값을 정의합니다.
+        float[] mean = {0.485f, 0.456f, 0.406f};
+        float[] std = {0.229f, 0.224f, 0.225f};
+
+        // RGB 채널 별로 denormalize합니다.
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        int[] pixels = new int[width * height];
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixelIndex = y * width + x;
+                int rIndex = pixelIndex;
+                int gIndex = pixelIndex + width * height;
+                int bIndex = pixelIndex + 2 * width * height;
+
+                // 픽셀 값 denormalize
+                int r = (int) ((normalizedTensor[rIndex] * std[0] + mean[0]) * 255);
+                int g = (int) ((normalizedTensor[gIndex] * std[1] + mean[1]) * 255);
+                int b = (int) ((normalizedTensor[bIndex] * std[2] + mean[2]) * 255);
+
+                // 픽셀 값 범위 확인
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+
+                // ARGB 값 생성
+                pixels[pixelIndex] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+        }
+
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+        return bitmap;
+    }
+
+    // 세그먼테이션 이미지를 원본 이미지에 오버레이하는 함수
+    private Bitmap applyOverlayOnImage(Bitmap originalBitmap, Bitmap segmentationBitmap) {
+        Bitmap overlayBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(overlayBitmap);
+        canvas.drawBitmap(originalBitmap, 0, 0, null);
+        canvas.drawBitmap(segmentationBitmap, 0, 0, null); // Add blend mode if needed
+        return overlayBitmap;
+    }
+    // 정규화된 텐서를 원본 이미지 값으로 변환하는 함수
+    public Bitmap denormalizeTensor(Tensor tensor, float[] mean, float[] std) {
+        float[] normalizedTensor = tensor.getDataAsFloatArray();
+        int height = (int) tensor.shape()[2];
+        int width = (int) tensor.shape()[3];
+
+        // RGB 채널 별로 denormalize
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        int[] pixels = new int[width * height];
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixelIndex = y * width + x;
+                int rIndex = pixelIndex;
+                int gIndex = pixelIndex + width * height;
+                int bIndex = pixelIndex + 2 * width * height;
+
+                // 픽셀 값 denormalize
+                int r = (int) ((normalizedTensor[rIndex] * std[0] + mean[0]) * 255);
+                int g = (int) ((normalizedTensor[gIndex] * std[1] + mean[1]) * 255);
+                int b = (int) ((normalizedTensor[bIndex] * std[2] + mean[2]) * 255);
+
+                // 픽셀 값 범위 확인
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+
+                // ARGB 값 생성
+                pixels[pixelIndex] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+        }
+
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+        return bitmap;
+    }
     private void saveBitmapToBinary(Bitmap bitmap, String filename) {
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File file = new File(storageDir, filename + ".bin");
@@ -707,6 +766,32 @@ public class ParsingActivity extends AppCompatActivity {
         } catch (IOException e) {
             Log.e("SaveBitmapToBinary", "Error saving file: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    private void saveProbabilitiesToFile(double[][][] softmaxScores, String fileName) {
+        try {
+            File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File file = new File(storageDir, fileName + ".txt");
+
+            // 파일 작성을 위한 FileWriter 생성
+            FileWriter writer = new FileWriter(file);
+
+            // softmax 점수를 파일에 작성
+            for (int y = 0; y < softmaxScores.length; y++) {
+                for (int x = 0; x < softmaxScores[0].length; x++) {
+                    String line = y + "," + x;
+                    for (int c = 0; c < softmaxScores[0][0].length; c++) {
+                        line += "," + softmaxScores[y][x][c];
+                    }
+                    writer.write(line + "\n");
+                }
+            }
+            Log.d("SaveBitmapToBinary", "File saved successfully: " + file.getAbsolutePath());
+            // 파일 닫기
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("FileSaveError", "Error in saving file: " + e.getMessage());
         }
     }
 
@@ -743,6 +828,7 @@ public class ParsingActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
 
     private void saveTensorToFile(Tensor tensor, String filename) {
         // 텐서 데이터를 float 배열로 가져오기
@@ -1275,7 +1361,8 @@ public class ParsingActivity extends AppCompatActivity {
         Mat resizedImage = new Mat();
         Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_NEAREST);
 
-        Mat newImage = Mat.zeros(eh, ew, image.type());
+        // 변경된 부분: 모든 픽셀을 불투명한 검은색으로 초기화
+        Mat newImage = new Mat(eh, ew, image.type(), new Scalar(0, 0, 0, 255)); // 검은색 배경, 불투명 (A값 255)
 
         int top = (eh - nh) / 2;
         int left = (ew - nw) / 2;
