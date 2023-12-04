@@ -7,9 +7,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
 
-import android.graphics.RectF;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,7 +15,6 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -25,13 +22,9 @@ import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
@@ -48,17 +41,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 
 
 // ParsingActivity: 이미지를 파싱하고 분석하는 Activity
@@ -375,7 +365,6 @@ public class ParsingActivity extends AppCompatActivity {
             }
         });
 
-
         // PyTorch 모델(Pt)을 로드
         try {
             mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "unet_model.pt"));
@@ -383,6 +372,7 @@ public class ParsingActivity extends AppCompatActivity {
             Log.e("ImageParsing", "Error reading assets", e);
             finish();
         }
+
 
         mUnetButton = findViewById(R.id.UnetButton);
         mUnetButton.setOnClickListener(new View.OnClickListener() {
@@ -465,7 +455,6 @@ public class ParsingActivity extends AppCompatActivity {
                         ColorValues[j * width + k] = getColorForClass(maxClass);
                         int grayValue = maxClass & 0xFF;  // 가정: maxClass는 0에서 255 사이의 값을 가집니다.
                         classValues[j * width + k] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
-
                     }
                 }
                 final Bitmap outBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
@@ -613,7 +602,6 @@ public class ParsingActivity extends AppCompatActivity {
             }
             return classScores;
         }
-
 
         // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
         private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height) {
