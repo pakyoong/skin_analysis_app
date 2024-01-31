@@ -18,6 +18,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -96,6 +97,8 @@ public class ParsingActivity extends AppCompatActivity {
     private Bitmap classBitmap2 = null;
     private Bitmap newLeftBitmap = null;
     private Bitmap newRightBitmap = null;
+    private Bitmap newLeftBitmap2 = null;
+    private Bitmap newRightBitmap2 = null;
     private Bitmap unet_colorBitmap = null;
     private Bitmap unet_grayScaleBitmap =null;
     private Button mButtonParsing;
@@ -286,26 +289,29 @@ public class ParsingActivity extends AppCompatActivity {
                 Utils.matToBitmap(imgMat, finalBitmap);
                 mImageView.setImageBitmap(finalBitmap);
                 if (is_leye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 0, 0, 255), -1);
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
                 }
                 if (is_reye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 0, 0, 255), -1);
+                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
                 }
 
                 Utils.matToBitmap(imgMat, finalBitmap);
 
                 // mBitmap을 새 Bitmap 객체로 복사
                 Bitmap newBitmap = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
+                Bitmap newBitmap2 = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
                 // 새로운 Bitmap을 Mat 객체로 변환
                 Mat newImgMat = new Mat();
                 Utils.bitmapToMat(newBitmap, newImgMat);
+                Mat newImgMat2 = new Mat();
+                Utils.bitmapToMat(newBitmap2, newImgMat2);
 
                 // 조건에 따라 타원을 그리기
                 if (is_leye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(0, 0, 0, 255), -1);
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
                 }
                 if (is_reye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(0, 0, 0, 255), -1);
+                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
                 }
 
                 logMatSize(newImgMat, "newImgMat");  // newImgMat의 해상도 로그 출력
@@ -320,6 +326,7 @@ public class ParsingActivity extends AppCompatActivity {
 
                 Rect cropRect = new Rect(cropXmin, cropYmin, cropW, cropH);
                 Mat cropNewImgMat = new Mat(newImgMat, cropRect);
+                Mat cropNewImgMat2 = new Mat(newImgMat2, cropRect);
                 saveMatToBinary(cropNewImgMat, "cropNewImgMat");
                 logMatSize(cropNewImgMat, "cropNewImgMat");  // cropNewImgMat의 해상도 로그 출력
 
@@ -331,19 +338,25 @@ public class ParsingActivity extends AppCompatActivity {
                 // 왼쪽 영역 정의
                 Rect leftRect = new Rect(0, 0, halfWidth, height);
                 Mat cropNewLeftMat = new Mat(cropNewImgMat, leftRect);
+                Mat cropNewLeftMat2 = new Mat(cropNewImgMat2, leftRect);
 
                 // 오른쪽 영역 정의
                 Rect rightRect = new Rect(halfWidth, 0, halfWidth, height);
                 Mat cropNewRightMat = new Mat(cropNewImgMat, rightRect);
+                Mat cropNewRightMat2 = new Mat(cropNewImgMat2, rightRect);
 
                 // letterboxImage 함수를 사용하여 이미지 크기 조정
                 Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
                 Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
+                Mat newLeftMat2 = letterboxImage(cropNewLeftMat2, new Size(640, 640));
+                Mat newRightMat2 = letterboxImage(cropNewRightMat2, new Size(640, 640));
 
 
                 // 크롭된 Mat 객체를 다시 Bitmap으로 변환
                 Bitmap cropNewImg = Bitmap.createBitmap(cropNewImgMat.cols(), cropNewImgMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(cropNewImgMat, cropNewImg);
+                Bitmap cropNewImg2 = Bitmap.createBitmap(cropNewImgMat2.cols(), cropNewImgMat2.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(cropNewImgMat2, cropNewImg2);
 
                 // Mat 객체를 다시 Bitmap으로 변환
                 newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
@@ -351,11 +364,17 @@ public class ParsingActivity extends AppCompatActivity {
                 Utils.matToBitmap(newLeftMat, newLeftBitmap);
                 Utils.matToBitmap(newRightMat, newRightBitmap);
 
+
+                newLeftBitmap2 = Bitmap.createBitmap(newLeftMat2.cols(), newLeftMat2.rows(), Bitmap.Config.ARGB_8888);
+                newRightBitmap2 = Bitmap.createBitmap(newRightMat2.cols(), newRightMat2.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(newLeftMat2, newLeftBitmap2);
+                Utils.matToBitmap(newRightMat2, newRightBitmap2);
+
                 // 파일로 저장
                 saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
 
                 // ImageView에 새로운 Bitmap을 설정합니다.
-                mImageView.setImageBitmap(newLeftBitmap);
+                mImageView.setImageBitmap(newLeftBitmap2);
                 // newLeftBitmap의 가로와 세로 길이를 얻기
                 int bitwidth = newLeftBitmap.getWidth();
                 int bitheight = newLeftBitmap.getHeight();
@@ -367,7 +386,7 @@ public class ParsingActivity extends AppCompatActivity {
 
         // PyTorch 모델(Pt)을 로드
         try {
-            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "unet_model.pt"));
+            mModule2 = Module.load(ParsingActivity.assetFilePath(getApplicationContext(), "unet_model2.pt"));
         } catch (IOException e) {
             Log.e("ImageParsing", "Error reading assets", e);
             finish();
@@ -528,6 +547,7 @@ public class ParsingActivity extends AppCompatActivity {
     private class UnetRunnable implements Runnable {
         private final WeakReference<ParsingActivity> activityReference;
 
+        private int classOnePixelCount = 0;
         public UnetRunnable(ParsingActivity activity) {
             this.activityReference = new WeakReference<>(activity);
         }
@@ -566,24 +586,35 @@ public class ParsingActivity extends AppCompatActivity {
                 saveProbabilitiesToFile(unet_score1, "unet_score1");
                 saveProbabilitiesToFile(unet_score2, "unet_score2");
 
+                int[] leftEyeClassOnePixelCount = new int[1];
+                int[] rightEyeClassOnePixelCount = new int[1];
+                int highlightColor = Color.BLUE; // 클래스 1을 강조할 색상
 
                 // 세그먼테이션 이미지 생성
-                Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
-                Bitmap segmentationBitmap2 = createSegmentationImage(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight());
+//                Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight(), leftEyeClassOnePixelCount);
+//                Bitmap segmentationBitmap2 = createSegmentationImage(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight(), rightEyeClassOnePixelCount);
+                Bitmap segmentationBitmap1 = createSegmentationImage2(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight(), leftEyeClassOnePixelCount, highlightColor);
+                Bitmap segmentationBitmap2 = createSegmentationImage2(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight(), rightEyeClassOnePixelCount, highlightColor);
 
                 // 세그먼테이션 이미지 저장
                 saveBitmapAsPNG(segmentationBitmap1, "segmentation1");
                 saveBitmapAsPNG(segmentationBitmap2, "segmentation2");
 //
-//                // 오버레이 적용
-//                Bitmap overlayBitmap1 = applyOverlayOnImage(newLeftBitmap, segmentationBitmap1);
-//                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap, segmentationBitmap2);
 //
+                Bitmap overlayBitmap = applyOverlayOnImage(newLeftBitmap2, segmentationBitmap1);
+//                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap2, segmentationBitmap1);
 //                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
 
                 // 결과 이미지 화면에 표시
                 runOnUiThread(() -> {
-                    mImageView.setImageBitmap(segmentationBitmap1);
+//                    mImageView.setImageBitmap(segmentationBitmap1);
+                    mImageView.setImageBitmap(overlayBitmap);
+//                    mImageView.setImageBitmap(overlayBitmap2);
+                    TextView textView2 = activity.findViewById(R.id.textView2);
+                    String pixelCountText = "좌측 눈가 주름 픽셀 수: " + leftEyeClassOnePixelCount[0] +
+                            "\n우측 눈가 주름 픽셀 수: " + rightEyeClassOnePixelCount[0];
+                    textView2.setText(pixelCountText);
+
                     // mImageView2.setImageBitmap(overlayBitmap2); // 다른 이미지 뷰에 두 번째 이미지 결과 표시
                 });
             }
@@ -604,10 +635,12 @@ public class ParsingActivity extends AppCompatActivity {
         }
 
         // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
-        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height) {
+        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height, int[] classOnePixelCount) {
             final float[] scores = outputTensor.getDataAsFloatArray();
             int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
             int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
+
+            classOnePixelCount[0] = 0;
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
@@ -621,16 +654,51 @@ public class ParsingActivity extends AppCompatActivity {
                             maxClassIndex = c;
                         }
                     }
+                    // 클래스 1인 픽셀의 수를 세는 로직 추가
+                    if (maxClassIndex == 1) {
+                        classOnePixelCount[0]++;
+                    }
                     ColorValues[y * width + x] = getColorForClass2(maxClassIndex);
                     int grayValue = maxClassIndex & 0xFF;
                     classValues[y * width + x] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
                 }
             }
-
+            Log.d("ClassOnePixelCount", "Number of pixels in class 1: " + classOnePixelCount);
             unet_colorBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
             unet_grayScaleBitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
             final Bitmap segmentationBitmap =unet_colorBitmap;
             return segmentationBitmap;
+        }
+
+        // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수 (수정됨)
+        private Bitmap createSegmentationImage2(Tensor outputTensor, int width, int height, int[] classOnePixelCount, int highlightColor) {
+            final float[] scores = outputTensor.getDataAsFloatArray();
+            int[] segmentationValues = new int[width * height]; // 세그먼테이션 값이 저장될 배열
+
+            classOnePixelCount[0] = 0;
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int maxClassIndex = 0;
+                    float maxnum = -Float.MAX_VALUE;
+                    for (int c = 0; c < N_CLASSES2; c++) {
+                        float score = scores[(c * width * height) + (y * width) + x];
+                        if (score > maxnum) {
+                            maxnum = score;
+                            maxClassIndex = c;
+                        }
+                    }
+                    // 클래스 1인 픽셀의 수를 세는 로직 추가
+                    if (maxClassIndex == 1) {
+                        classOnePixelCount[0]++;
+                        segmentationValues[y * width + x] = highlightColor; // 클래스 1에 해당하는 픽셀을 특정 색상으로 표시
+                    } else {
+                        segmentationValues[y * width + x] = Color.TRANSPARENT; // 그 외는 투명 처리
+                    }
+                }
+            }
+
+            return Bitmap.createBitmap(segmentationValues, width, height, Bitmap.Config.ARGB_8888);
         }
 
 
@@ -693,9 +761,10 @@ public class ParsingActivity extends AppCompatActivity {
         Bitmap overlayBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(overlayBitmap);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
-        canvas.drawBitmap(segmentationBitmap, 0, 0, null); // Add blend mode if needed
+        canvas.drawBitmap(segmentationBitmap, 0, 0, null); // 여기서 segmentationBitmap은 클래스 1에 해당하는 영역을 강조한 이미지
         return overlayBitmap;
     }
+
     // 정규화된 텐서를 원본 이미지 값으로 변환하는 함수
     public Bitmap denormalizeTensor(Tensor tensor, float[] mean, float[] std) {
         float[] normalizedTensor = tensor.getDataAsFloatArray();
@@ -1350,7 +1419,7 @@ public class ParsingActivity extends AppCompatActivity {
         Imgproc.resize(image, resizedImage, new Size(nw, nh), 0, 0, Imgproc.INTER_NEAREST);
 
         // 변경된 부분: 모든 픽셀을 불투명한 검은색으로 초기화
-        Mat newImage = new Mat(eh, ew, image.type(), new Scalar(0, 0, 0, 255)); // 검은색 배경, 불투명 (A값 255)
+        Mat newImage = new Mat(eh, ew, image.type(), new Scalar(255, 255, 255, 255)); // 검은색 배경, 불투명 (A값 255)
 
         int top = (eh - nh) / 2;
         int left = (ew - nw) / 2;
