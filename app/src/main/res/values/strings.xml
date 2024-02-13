@@ -24,4 +24,5 @@
     <string name="camera_permissions_action">Turn On</string>
     <string name="enter_your_name_hint">사용자 이름을 입력해 주세요.</string>
     <string name="TextView_text2"><b>이미지에 대해 분석하시겠습니까?</b></string>
+    <string name="change_direction">좌 우 변경</string>
 </resources>

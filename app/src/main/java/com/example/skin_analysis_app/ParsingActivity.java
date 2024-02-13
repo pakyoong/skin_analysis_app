@@ -32,11 +32,11 @@ import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,11 +45,18 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
+
+import android.graphics.drawable.BitmapDrawable;
+
 
 
 // ParsingActivity: 이미지를 파싱하고 분석하는 Activity
@@ -59,7 +66,6 @@ public class ParsingActivity extends AppCompatActivity {
     // 클래스의 수를 상수로 선언
     private static final int N_CLASSES = 19;
     private static final int N_CLASSES2 = 2;
-    private static final int TARGET_CLASS_INDEX =1;
     public static final String[] LABELS = {
             "background",
             "skin",
@@ -93,12 +99,12 @@ public class ParsingActivity extends AppCompatActivity {
     private Bitmap mBitmap = null;
     private Bitmap finalBitmap = null;
     private Bitmap classBitmap = null;
-    private Bitmap finalBitmap1 = null;
-    private Bitmap classBitmap2 = null;
     private Bitmap newLeftBitmap = null;
     private Bitmap newRightBitmap = null;
     private Bitmap newLeftBitmap2 = null;
     private Bitmap newRightBitmap2 = null;
+    private Bitmap overlayBitmap = null;
+    private Bitmap overlayBitmap2 = null;
     private Bitmap unet_colorBitmap = null;
     private Bitmap unet_grayScaleBitmap =null;
     private Button mButtonParsing;
@@ -327,7 +333,7 @@ public class ParsingActivity extends AppCompatActivity {
                 Rect cropRect = new Rect(cropXmin, cropYmin, cropW, cropH);
                 Mat cropNewImgMat = new Mat(newImgMat, cropRect);
                 Mat cropNewImgMat2 = new Mat(newImgMat2, cropRect);
-                saveMatToBinary(cropNewImgMat, "cropNewImgMat");
+//                saveMatToBinary(cropNewImgMat, "cropNewImgMat");
                 logMatSize(cropNewImgMat, "cropNewImgMat");  // cropNewImgMat의 해상도 로그 출력
 
                 // cropNewImgMat 크기와 반 크기 계산
@@ -371,7 +377,7 @@ public class ParsingActivity extends AppCompatActivity {
                 Utils.matToBitmap(newRightMat2, newRightBitmap2);
 
                 // 파일로 저장
-                saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
+//                saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
 
                 // ImageView에 새로운 Bitmap을 설정합니다.
                 mImageView.setImageBitmap(newLeftBitmap2);
@@ -401,6 +407,15 @@ public class ParsingActivity extends AppCompatActivity {
                 unetThread.start();
             }
         });
+
+        Button changeDirectionButton = findViewById(R.id.changeDirectionButton);
+        changeDirectionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toggleImage();
+            }
+        });
+
 
     }
     // Mat 객체의 해상도를 로그로 출력하는 코드
@@ -518,17 +533,6 @@ public class ParsingActivity extends AppCompatActivity {
                     classBitmap = scaled2Bitmap;
                 }
 
-//                        // classBitmap 에서 class 번호가 잘 출력 되는지 Pixels 값 테스트
-//                        int[] pixels = new int[classBitmap.getWidth() * classBitmap.getHeight()];
-//                        classBitmap.getPixels(pixels, 0, classBitmap.getWidth(), 0, 0, classBitmap.getWidth(), classBitmap.getHeight());
-//
-//                        for (int i = 0; i < pixels.length; i++) {
-//                            int blue = pixels[i] & 0xFF; // 클래스 번호가 블루 채널에 저장될 것으로 예상
-//                            if (blue != 0) {
-//                                Log.d("PARSING_ACTIVITY", "Pixel " + i + ": Class Number = " + blue);
-//                            }
-//                        }
-
                 runOnUiThread(() -> {
                     mImageView.setImageBitmap(finalBitmap);
                     mProgressBar.setVisibility(ProgressBar.INVISIBLE);
@@ -547,7 +551,6 @@ public class ParsingActivity extends AppCompatActivity {
     private class UnetRunnable implements Runnable {
         private final WeakReference<ParsingActivity> activityReference;
 
-        private int classOnePixelCount = 0;
         public UnetRunnable(ParsingActivity activity) {
             this.activityReference = new WeakReference<>(activity);
         }
@@ -564,52 +567,72 @@ public class ParsingActivity extends AppCompatActivity {
                 Log.d("TensorSize", "Tensor shape: " + Arrays.toString(outputTensor1.shape()));
 
 
-//                Bitmap tensorBitmap1 = tensorToBitmap(inputTensor1);
-//                saveBitmapAsPNG(tensorBitmap1, "tensorBitmap1");
-//                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor1.shape()));
-
                 // 두 번째 이미지 처리
                 final Tensor inputTensor2 = TensorImageUtils.bitmapToFloat32Tensor(newRightBitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
 
                 final Tensor outputTensor2 = mModule2.forward(IValue.from(inputTensor2)).toTensor();
                 Log.d("TensorSize", "Tensor shape: " + Arrays.toString(outputTensor2.shape()));
 
-//                Bitmap tensorBitmap2 = tensorToBitmap(inputTensor2);
-//                saveBitmapAsPNG(tensorBitmap2, "tensorBitmap2");
-//                Log.d("TensorSize", "Tensor shape: " + Arrays.toString(inputTensor2.shape()));
-
                 // 모델 출력을 사용하여 softmax 점수 계산
                 double[][][] unet_score1 = calculateScores(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight());
                 double[][][] unet_score2 = calculateScores(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight());
-
-                // 확률을 파일로 저장
-                saveProbabilitiesToFile(unet_score1, "unet_score1");
-                saveProbabilitiesToFile(unet_score2, "unet_score2");
+//
+//                // 확률을 파일로 저장
+//                saveProbabilitiesToFile(unet_score1, "unet_score1");
+//                saveProbabilitiesToFile(unet_score2, "unet_score2");
 
                 int[] leftEyeClassOnePixelCount = new int[1];
                 int[] rightEyeClassOnePixelCount = new int[1];
                 int highlightColor = Color.BLUE; // 클래스 1을 강조할 색상
 
-                // 세그먼테이션 이미지 생성
-//                Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight(), leftEyeClassOnePixelCount);
-//                Bitmap segmentationBitmap2 = createSegmentationImage(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight(), rightEyeClassOnePixelCount);
-                Bitmap segmentationBitmap1 = createSegmentationImage2(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight(), leftEyeClassOnePixelCount, highlightColor);
-                Bitmap segmentationBitmap2 = createSegmentationImage2(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight(), rightEyeClassOnePixelCount, highlightColor);
-
-                // 세그먼테이션 이미지 저장
-                saveBitmapAsPNG(segmentationBitmap1, "segmentation1");
-                saveBitmapAsPNG(segmentationBitmap2, "segmentation2");
+                Bitmap segmentationBitmap1 = createSegmentationImage(outputTensor1, newLeftBitmap.getWidth(), newLeftBitmap.getHeight(), leftEyeClassOnePixelCount, highlightColor);
+                Bitmap segmentationBitmap2 = createSegmentationImage(outputTensor2, newRightBitmap.getWidth(), newRightBitmap.getHeight(), rightEyeClassOnePixelCount, highlightColor);
+//
+//                // 세그먼테이션 이미지 저장
+//                saveBitmapAsPNG(segmentationBitmap1, "segmentation1");
+//                saveBitmapAsPNG(segmentationBitmap2, "segmentation2");
 //
 //
-                Bitmap overlayBitmap = applyOverlayOnImage(newLeftBitmap2, segmentationBitmap1);
-//                Bitmap overlayBitmap2 = applyOverlayOnImage(newRightBitmap2, segmentationBitmap1);
+                overlayBitmap = applyOverlayOnImage(newLeftBitmap2, segmentationBitmap1);
+                overlayBitmap2 = applyOverlayOnImage(newRightBitmap2, segmentationBitmap2);
 //                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
+
+                // 결과 이미지 저장
+                String baseFileName = generateFileNameWithTimestamp("SkinAnalysis"); // 기본 파일 이름에 날짜와 시간을 포함
+                String overlayFileName1 = baseFileName + "_왼쪽_분석";
+                String overlayFileName2 = baseFileName + "_오른쪽_분석";
+                activity.saveBitmapAsPNG(overlayBitmap, overlayFileName1);
+                activity.saveBitmapAsPNG(overlayBitmap2, overlayFileName2);
+
+                // 분석 결과 기록
+                String resultsFileName = baseFileName + "_results";
+                String resultsContent = "분석 시간: " + getCurrentDateTime() +
+                        "\n좌측 눈가 주름 픽셀 수: " + leftEyeClassOnePixelCount[0] +
+                        "\n오른쪽 눈가 주름 픽셀 수: " + rightEyeClassOnePixelCount[0] +
+                        "\n왼쪽 눈 사진 파일 명: " + overlayFileName1 + ".png" +
+                        "\n오른쪽 눈 사진 파일 명: " + overlayFileName2 + ".png";
+                saveTextToFile(resultsFileName, resultsContent);
+
+                // 결과 파일명 기록 (예시로 직접 파일 저장 함수를 구현해야 함)
+                String recordsFileName = "AnalysisFilesRecord";
+                String fileRecordsContent = resultsFileName + ".txt";
+                // 이전 내용 불러오기
+                String previousRecords = loadTextFromFile(recordsFileName+".txt");
+
+                // 이전 내용과 새로운 내용 합치기
+                fileRecordsContent = previousRecords + fileRecordsContent;
+
+                // .txt 파일에 줄 바꿈 문자(\n) 추가
+                fileRecordsContent += "\n";
+                // .txt 파일에 이어서 저장
+                saveTextToFile(recordsFileName, fileRecordsContent);
+
+
 
                 // 결과 이미지 화면에 표시
                 runOnUiThread(() -> {
 //                    mImageView.setImageBitmap(segmentationBitmap1);
                     mImageView.setImageBitmap(overlayBitmap);
-//                    mImageView.setImageBitmap(overlayBitmap2);
                     TextView textView2 = activity.findViewById(R.id.textView2);
                     String pixelCountText = "좌측 눈가 주름 픽셀 수: " + leftEyeClassOnePixelCount[0] +
                             "\n우측 눈가 주름 픽셀 수: " + rightEyeClassOnePixelCount[0];
@@ -619,6 +642,29 @@ public class ParsingActivity extends AppCompatActivity {
                 });
             }
         }
+        private String loadTextFromFile(String filename) {
+            File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "skin_analysis");
+            File textFile = new File(storageDir, filename);
+
+            StringBuilder text = new StringBuilder();
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(textFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    text.append(line).append('\n');
+                }
+            } catch (IOException e) {
+                Log.e("LoadTextFile", "Error loading text file: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            return text.toString();
+        }
+        private String getCurrentDateTime() {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            return dateFormat.format(new Date());
+        }
+
         private double[][][] calculateScores(Tensor outputTensor, int width, int height) {
             final float[] scores = outputTensor.getDataAsFloatArray();
             double[][][] classScores = new double[height][width][N_CLASSES2];
@@ -634,44 +680,8 @@ public class ParsingActivity extends AppCompatActivity {
             return classScores;
         }
 
-        // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수
-        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height, int[] classOnePixelCount) {
-            final float[] scores = outputTensor.getDataAsFloatArray();
-            int[] ColorValues = new int[width * height]; // 색상 값이 저장될 배열
-            int[] classValues = new int[width * height]; // 클래스 번호가 저장될 배열
-
-            classOnePixelCount[0] = 0;
-
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int maxClassIndex = 0;
-                    float maxnum = -Float.MAX_VALUE;
-                    // 각 클래스에 대한 확률을 비교하여 최대 확률을 가진 클래스 선택
-                    for (int c = 0; c < N_CLASSES2; c++) {
-                        float score = scores[(c * width * height) + (y * width) + x];
-                        if (score > maxnum) {
-                            maxnum = score;
-                            maxClassIndex = c;
-                        }
-                    }
-                    // 클래스 1인 픽셀의 수를 세는 로직 추가
-                    if (maxClassIndex == 1) {
-                        classOnePixelCount[0]++;
-                    }
-                    ColorValues[y * width + x] = getColorForClass2(maxClassIndex);
-                    int grayValue = maxClassIndex & 0xFF;
-                    classValues[y * width + x] = 0xFF000000 | (grayValue << 16) | (grayValue << 8) | grayValue;
-                }
-            }
-            Log.d("ClassOnePixelCount", "Number of pixels in class 1: " + classOnePixelCount);
-            unet_colorBitmap = Bitmap.createBitmap(ColorValues, width, height, Bitmap.Config.ARGB_8888);
-            unet_grayScaleBitmap = Bitmap.createBitmap(classValues, width, height, Bitmap.Config.ARGB_8888);
-            final Bitmap segmentationBitmap =unet_colorBitmap;
-            return segmentationBitmap;
-        }
-
         // 모델 출력을 사용하여 세그먼테이션 이미지 생성하는 함수 (수정됨)
-        private Bitmap createSegmentationImage2(Tensor outputTensor, int width, int height, int[] classOnePixelCount, int highlightColor) {
+        private Bitmap createSegmentationImage(Tensor outputTensor, int width, int height, int[] classOnePixelCount, int highlightColor) {
             final float[] scores = outputTensor.getDataAsFloatArray();
             int[] segmentationValues = new int[width * height]; // 세그먼테이션 값이 저장될 배열
 
@@ -701,59 +711,29 @@ public class ParsingActivity extends AppCompatActivity {
             return Bitmap.createBitmap(segmentationValues, width, height, Bitmap.Config.ARGB_8888);
         }
 
+        // 텍스트 파일 저장 함수
+        private void saveTextToFile(String filename, String content) {
+            File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "skin_analysis");
 
-    }
-        private int getColorForClass2(int classIndex) {
-        // 클래스 인덱스에 따라 그레이스케일 값 반환
-        // 예: 클래스 0은 검은색, 클래스 1은 흰색
-        if (classIndex == 0) {
-            return Color.BLACK; // 검은색
-        } else if (classIndex == 1) {
-            return Color.WHITE; // 흰색
-        } else {
-            return Color.GRAY; // 기타 클래스는 회색
-        }
-    }
+            // "skin_analysis" 폴더가 없으면 생성합니다.
+            if (!storageDir.exists()) {
+                storageDir.mkdirs(); // mkdirs()는 필요한 모든 상위 디렉토리를 포함하여 해당 경로에 디렉토리를 생성합니다.
+            }
 
-    // 정규화된 텐서를 원본 이미지 값으로 변환하는 함수
-    public Bitmap tensorToBitmap(Tensor tensor) {
-        // 텐서의 데이터를 float 배열로 가져옵니다.
-        float[] normalizedTensor = tensor.getDataAsFloatArray();
-        int height = (int) tensor.shape()[2];
-        int width = (int) tensor.shape()[3];
+            File textFile = new File(storageDir, filename + ".txt");
 
-        // PyTorch의 TensorImageUtils에서 사용된 평균 및 표준편차 값을 정의합니다.
-        float[] mean = {0.485f, 0.456f, 0.406f};
-        float[] std = {0.229f, 0.224f, 0.225f};
-
-        // RGB 채널 별로 denormalize합니다.
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        int[] pixels = new int[width * height];
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int pixelIndex = y * width + x;
-                int rIndex = pixelIndex;
-                int gIndex = pixelIndex + width * height;
-                int bIndex = pixelIndex + 2 * width * height;
-
-                // 픽셀 값 denormalize
-                int r = (int) ((normalizedTensor[rIndex] * std[0] + mean[0]) * 255);
-                int g = (int) ((normalizedTensor[gIndex] * std[1] + mean[1]) * 255);
-                int b = (int) ((normalizedTensor[bIndex] * std[2] + mean[2]) * 255);
-
-                // 픽셀 값 범위 확인
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
-
-                // ARGB 값 생성
-                pixels[pixelIndex] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            try (FileWriter writer = new FileWriter(textFile)) {
+                writer.write(content);
+                writer.flush();
+                // 성공 로그 추가
+                Log.d("SaveTextFile", "Text file saved successfully: " + textFile.getAbsolutePath());
+            } catch (IOException e) {
+                // 실패 로그 추가
+                Log.e("SaveTextFile", "Error saving text file: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
-        return bitmap;
     }
 
     // 세그먼테이션 이미지를 원본 이미지에 오버레이하는 함수
@@ -765,41 +745,6 @@ public class ParsingActivity extends AppCompatActivity {
         return overlayBitmap;
     }
 
-    // 정규화된 텐서를 원본 이미지 값으로 변환하는 함수
-    public Bitmap denormalizeTensor(Tensor tensor, float[] mean, float[] std) {
-        float[] normalizedTensor = tensor.getDataAsFloatArray();
-        int height = (int) tensor.shape()[2];
-        int width = (int) tensor.shape()[3];
-
-        // RGB 채널 별로 denormalize
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        int[] pixels = new int[width * height];
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int pixelIndex = y * width + x;
-                int rIndex = pixelIndex;
-                int gIndex = pixelIndex + width * height;
-                int bIndex = pixelIndex + 2 * width * height;
-
-                // 픽셀 값 denormalize
-                int r = (int) ((normalizedTensor[rIndex] * std[0] + mean[0]) * 255);
-                int g = (int) ((normalizedTensor[gIndex] * std[1] + mean[1]) * 255);
-                int b = (int) ((normalizedTensor[bIndex] * std[2] + mean[2]) * 255);
-
-                // 픽셀 값 범위 확인
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
-
-                // ARGB 값 생성
-                pixels[pixelIndex] = 0xFF000000 | (r << 16) | (g << 8) | b;
-            }
-        }
-
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
-        return bitmap;
-    }
     private void saveBitmapToBinary(Bitmap bitmap, String filename) {
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File file = new File(storageDir, filename + ".bin");
@@ -825,6 +770,7 @@ public class ParsingActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
     private void saveProbabilitiesToFile(double[][][] softmaxScores, String fileName) {
         try {
             File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -914,31 +860,16 @@ public class ParsingActivity extends AppCompatActivity {
         }
     }
 
-    private void checkSavedTensorFile(String filename) {
-        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File file = new File(storageDir, filename + ".bin");
-
-        try (FileInputStream fis = new FileInputStream(file);
-             DataInputStream dis = new DataInputStream(fis)) {
-
-            ArrayList<Float> data = new ArrayList<>();
-            while (dis.available() > 0) {
-                data.add(dis.readFloat());
-            }
-
-            Log.d("CheckSavedTensorFile", "Read data length: " + data.size());
-        } catch (IOException e) {
-            Log.e("CheckSavedTensorFile", "Error reading file: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-
     // Bitmap 파일 저장 함수
     private void saveBitmapAsPNG(Bitmap bitmap, String filename) {
-        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-        String originalFileName = new File(picturePath).getName().replaceFirst("[.][^.]+$", "");
-        File imageFile = new File(storageDir, originalFileName + "_" + filename + ".png");
+        File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "skin_analysis");
+
+        // "skin_analysis" 폴더가 없으면 생성합니다.
+        if (!storageDir.exists()) {
+            storageDir.mkdirs(); // mkdirs()는 필요한 모든 상위 디렉토리를 포함하여 해당 경로에 디렉토리를 생성합니다.
+        }
+
+        File imageFile = new File(storageDir, filename + ".png");
 
         try (FileOutputStream outStream = new FileOutputStream(imageFile)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
@@ -951,7 +882,11 @@ public class ParsingActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
+    private String generateFileNameWithTimestamp(String baseName) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        String timestamp = dateFormat.format(new Date());
+        return baseName + "_" + timestamp;
+    }
 
     // getColorForClass: 클래스 인덱스에 따라 색상을 반환하는 함수
     private int getColorForClass(int classIndex) {
@@ -1428,5 +1363,27 @@ public class ParsingActivity extends AppCompatActivity {
         resizedImage.copyTo(subMat);
 
         return newImage;
+    }
+
+    private void toggleImage() {
+        // 현재 ImageView에 표시된 Bitmap을 가져옵니다.
+        Bitmap currentBitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+
+        // 현재 표시된 이미지와 오버레이 이미지를 비교하여 전환합니다.
+        if (currentBitmap.equals(newLeftBitmap2) || currentBitmap.equals(overlayBitmap)) {
+            // 오버레이 이미지가 있으면 오버레이된 이미지로 전환, 아니면 기본 이미지로 전환
+            if (overlayBitmap2 != null) {
+                mImageView.setImageBitmap(overlayBitmap2);
+            } else {
+                mImageView.setImageBitmap(newRightBitmap2);
+            }
+        } else {
+            // 오버레이 이미지가 있으면 오버레이된 이미지로 전환, 아니면 기본 이미지로 전환
+            if (overlayBitmap != null) {
+                mImageView.setImageBitmap(overlayBitmap);
+            } else {
+                mImageView.setImageBitmap(newLeftBitmap2);
+            }
+        }
     }
 }
