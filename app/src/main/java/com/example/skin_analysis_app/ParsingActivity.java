@@ -1,6 +1,7 @@
 package com.example.skin_analysis_app;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -20,6 +21,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.OpenCVLoader;
@@ -112,7 +114,7 @@ public class ParsingActivity extends AppCompatActivity {
     private Button mBackButton;
     private Button mButtonRoI;
     private Button mUnetButton;
-
+    private String userName;
     //ROI 변수 선언
 
     public static boolean is_leye;
@@ -205,6 +207,7 @@ public class ParsingActivity extends AppCompatActivity {
         // 인텐트에서 이미지 URI를 가져옴
         Intent intent = getIntent();
         String imageUri = intent.getStringExtra("image_uri");
+        userName = intent.getStringExtra("USER_NAME"); // 이 부분이 추가됩니다.
 
         // 이미지 URI가 null이 아니면 CameraxActivity에서 온 것
         if (imageUri != null) {
@@ -259,134 +262,60 @@ public class ParsingActivity extends AppCompatActivity {
             }
         });
 
-        // 뒤로 가기 버튼을 참조하고 클릭 리스너를 설정
+//        // 뒤로 가기 버튼을 참조하고 클릭 리스너를 설정
+//        mBackButton = findViewById(R.id.backButton);
+//        mBackButton.setOnClickListener(new View.OnClickListener() {
+//            public void onClick(View view) {
+//                // MainActivity로 명시적 인텐트를 사용하여 이동
+//                Intent intent = new Intent(ParsingActivity.this, MainActivity.class);
+//                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); // 이 플래그를 사용하여 MainActivity를 새로 생성하지 않고 기존의 MainActivity로 돌아갑니다.
+//                startActivity(intent);
+//            }
+//        });
         mBackButton = findViewById(R.id.backButton);
         mBackButton.setOnClickListener(new View.OnClickListener() {
+            @Override
             public void onClick(View view) {
-                // MainActivity로 명시적 인텐트를 사용하여 이동
-                Intent intent = new Intent(ParsingActivity.this, MainActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); // 이 플래그를 사용하여 MainActivity를 새로 생성하지 않고 기존의 MainActivity로 돌아갑니다.
-                startActivity(intent);
-            }
-        });
+                // 결과 목록을 로드합니다.
+                List<String> resultList = loadAnalysisResults();
+                // 결과 목록의 크기에 따라 선택 상태를 저장할 불리언 배열을 초기화합니다.
+                boolean[] checkedItems = new boolean[resultList.size()];
+                Arrays.fill(checkedItems, false); // 초기 상태는 모두 선택되지 않은 상태입니다.
 
-        mButtonRoI = findViewById(R.id.roiButton);
-        mButtonRoI.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View view) {
-                get_RoI(classBitmap);
-                Log.d("RoI", "ROI(xmin, ymin, xmax, ymax): " + roi_xmin + " " + roi_ymin + " " + roi_xmax + " " + roi_ymax);
+                // 결과 목록을 String 배열로 변환합니다.
+                String[] resultsArray = resultList.toArray(new String[0]);
 
-                roi_w = roi_xmax - roi_xmin;
-                roi_h = roi_ymax - roi_ymin;
-                Log.d("RoI", "ROI(xmin, ymin, width, height):" + roi_xmin + " " + roi_ymin + " " + roi_w + " " + roi_h);
-                get_eyes(classBitmap);
-                Log.d("RoI", "(" + leye_x + "," + leye_y + "," + leye_w + "," + leye_h + "), (" + reye_x + "," + reye_y + "," + reye_w + "," + reye_h + ")");
+                AlertDialog.Builder builder = new AlertDialog.Builder(ParsingActivity.this);
+                builder.setTitle("분석 결과 선택");
 
-                // finalBitmap을 Mat 객체로 변환
-                Mat imgMat = new Mat();
-                Bitmap bmp32 = finalBitmap.copy(Bitmap.Config.ARGB_8888, true);
-                Utils.bitmapToMat(bmp32, imgMat);
+                // 다중 선택 목록을 설정합니다.
+                builder.setMultiChoiceItems(resultsArray, checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which, boolean isChecked) {
+                        // 사용자가 항목을 선택하거나 선택을 해제할 때 호출됩니다.
+                        checkedItems[which] = isChecked;
+                    }
+                });
 
-                Rect rect = new Rect(roi_xmin, roi_ymin, roi_xmax - roi_xmin, roi_ymax - roi_ymin);
-                // OpenCV를 사용하여 사각형 그리기
-                Imgproc.rectangle(imgMat, rect, new Scalar(255, 0, 0), 3);
+                // 확인 버튼을 추가합니다.
+                builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // 여기서 사용자가 선택한 항목을 처리합니다.
+                        // 예를 들어, 선택된 항목의 인덱스를 로그로 출력할 수 있습니다.
+                        for (int i = 0; i < checkedItems.length; i++) {
+                            if (checkedItems[i]) {
+                                Log.d("Selected Item", resultsArray[i] + " is selected.");
+                            }
+                        }
+                    }
+                });
 
-                // Mat 객체를 Bitmap으로 변환하여 ImageView에 표시
-                Utils.matToBitmap(imgMat, finalBitmap);
-                mImageView.setImageBitmap(finalBitmap);
-                if (is_leye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
-                }
-                if (is_reye && !eye_error) {
-                    Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
-                }
+                // 취소 버튼을 추가합니다.
+                builder.setNegativeButton("취소", null);
 
-                Utils.matToBitmap(imgMat, finalBitmap);
-
-                // mBitmap을 새 Bitmap 객체로 복사
-                Bitmap newBitmap = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
-                Bitmap newBitmap2 = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
-                // 새로운 Bitmap을 Mat 객체로 변환
-                Mat newImgMat = new Mat();
-                Utils.bitmapToMat(newBitmap, newImgMat);
-                Mat newImgMat2 = new Mat();
-                Utils.bitmapToMat(newBitmap2, newImgMat2);
-
-                // 조건에 따라 타원을 그리기
-                if (is_leye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
-                }
-                if (is_reye && !eye_error) {
-                    Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
-                }
-
-                logMatSize(newImgMat, "newImgMat");  // newImgMat의 해상도 로그 출력
-                saveMatToBinary(newImgMat, "newImgMat");
-
-                int cropXmin = roi_xmin;
-                int cropXmax = roi_xmax;
-                int cropYmin = roi_ymin;
-                int cropYmax = roi_ymax;
-                int cropW = cropXmax - cropXmin;
-                int cropH = cropYmax - cropYmin;
-
-                Rect cropRect = new Rect(cropXmin, cropYmin, cropW, cropH);
-                Mat cropNewImgMat = new Mat(newImgMat, cropRect);
-                Mat cropNewImgMat2 = new Mat(newImgMat2, cropRect);
-//                saveMatToBinary(cropNewImgMat, "cropNewImgMat");
-                logMatSize(cropNewImgMat, "cropNewImgMat");  // cropNewImgMat의 해상도 로그 출력
-
-                // cropNewImgMat 크기와 반 크기 계산
-                int width = cropNewImgMat.cols();
-                int height = cropNewImgMat.rows();
-                int halfWidth = width / 2;
-
-                // 왼쪽 영역 정의
-                Rect leftRect = new Rect(0, 0, halfWidth, height);
-                Mat cropNewLeftMat = new Mat(cropNewImgMat, leftRect);
-                Mat cropNewLeftMat2 = new Mat(cropNewImgMat2, leftRect);
-
-                // 오른쪽 영역 정의
-                Rect rightRect = new Rect(halfWidth, 0, halfWidth, height);
-                Mat cropNewRightMat = new Mat(cropNewImgMat, rightRect);
-                Mat cropNewRightMat2 = new Mat(cropNewImgMat2, rightRect);
-
-                // letterboxImage 함수를 사용하여 이미지 크기 조정
-                Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
-                Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
-                Mat newLeftMat2 = letterboxImage(cropNewLeftMat2, new Size(640, 640));
-                Mat newRightMat2 = letterboxImage(cropNewRightMat2, new Size(640, 640));
-
-
-                // 크롭된 Mat 객체를 다시 Bitmap으로 변환
-                Bitmap cropNewImg = Bitmap.createBitmap(cropNewImgMat.cols(), cropNewImgMat.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(cropNewImgMat, cropNewImg);
-                Bitmap cropNewImg2 = Bitmap.createBitmap(cropNewImgMat2.cols(), cropNewImgMat2.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(cropNewImgMat2, cropNewImg2);
-
-                // Mat 객체를 다시 Bitmap으로 변환
-                newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
-                newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(newLeftMat, newLeftBitmap);
-                Utils.matToBitmap(newRightMat, newRightBitmap);
-
-
-                newLeftBitmap2 = Bitmap.createBitmap(newLeftMat2.cols(), newLeftMat2.rows(), Bitmap.Config.ARGB_8888);
-                newRightBitmap2 = Bitmap.createBitmap(newRightMat2.cols(), newRightMat2.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(newLeftMat2, newLeftBitmap2);
-                Utils.matToBitmap(newRightMat2, newRightBitmap2);
-
-                // 파일로 저장
-//                saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
-
-                // ImageView에 새로운 Bitmap을 설정합니다.
-                mImageView.setImageBitmap(newLeftBitmap2);
-                // newLeftBitmap의 가로와 세로 길이를 얻기
-                int bitwidth = newLeftBitmap.getWidth();
-                int bitheight = newLeftBitmap.getHeight();
-
-                // 로그 메시지로 크기 출력
-                Log.d("BitmapSize", "newLeftBitmap: Width = " + bitwidth + ", Height = " + bitheight);
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
         });
 
@@ -398,16 +327,6 @@ public class ParsingActivity extends AppCompatActivity {
             finish();
         }
 
-
-        mUnetButton = findViewById(R.id.UnetButton);
-        mUnetButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View view) {
-                // UnetRunnable 사용
-                Thread unetThread = new Thread(new UnetRunnable(ParsingActivity.this));
-                unetThread.start();
-            }
-        });
-
         Button changeDirectionButton = findViewById(R.id.changeDirectionButton);
         changeDirectionButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -418,6 +337,25 @@ public class ParsingActivity extends AppCompatActivity {
 
 
     }
+
+    // AnalysisFilesRecord.txt 파일에서 분석 결과 목록을 로드하는 메서드
+    private List<String> loadAnalysisResults() {
+        List<String> resultList = new ArrayList<>();
+        File storageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "skin_analysis");
+        File resultsFile = new File(storageDir, "AnalysisFilesRecord.txt");
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(resultsFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                resultList.add(line);
+            }
+        } catch (IOException e) {
+            Log.e("ParsingActivity", "Error loading analysis results: " + e.getMessage());
+        }
+
+        return resultList;
+    }
+
     // Mat 객체의 해상도를 로그로 출력하는 코드
     private void logMatSize(Mat mat, String matName) {
         int width = mat.cols();  // Mat 객체의 너비
@@ -543,8 +481,162 @@ public class ParsingActivity extends AppCompatActivity {
                 //        // Bitmap 파일 저장 Test
                 //        saveBitmapAsPNG(finalBitmap, "finalBitmap");
                 //        saveBitmapAsPNG(classBitmap, "classBitmap");
+
+                if (activity != null) {
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // 파싱 작업 완료 후 UI 업데이트
+                            // 예: mImageView.setImageBitmap(finalBitmap);
+
+                            // 파싱 작업 완료 후 performRoIAction 호출
+                            activity.performRoIAction();
+
+                            // 버튼 활성화 및 프로그레스 바 숨김
+                            activity.mButtonParsing.setEnabled(true);
+                            activity.mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+
+                            if (activity != null) {
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // 파싱 작업 완료 후 UI 업데이트
+                                        // 예: mImageView.setImageBitmap(finalBitmap);
+
+                                        // 파싱 작업 완료 후 UnetRunnable 실행
+                                        Thread unetThread = new Thread(new UnetRunnable(activity));
+                                        unetThread.start();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
             }
         }
+    }
+    private void performRoIAction() {
+        // classBitmap이 null인 경우 작업을 진행하지 않음
+        if (classBitmap == null) {
+            Log.e("ParsingActivity", "classBitmap is null. Skipping RoI action.");
+            return;
+        }
+
+        // classBitmap이 null이 아닌 경우에만 RoI 작업을 진행
+        get_RoI(classBitmap);
+        Log.d("RoI", "ROI(xmin, ymin, xmax, ymax): " + roi_xmin + " " + roi_ymin + " " + roi_xmax + " " + roi_ymax);
+
+        roi_w = roi_xmax - roi_xmin;
+        roi_h = roi_ymax - roi_ymin;
+        Log.d("RoI", "ROI(xmin, ymin, width, height):" + roi_xmin + " " + roi_ymin + " " + roi_w + " " + roi_h);
+        get_eyes(classBitmap);
+        Log.d("RoI", "(" + leye_x + "," + leye_y + "," + leye_w + "," + leye_h + "), (" + reye_x + "," + reye_y + "," + reye_w + "," + reye_h + ")");
+
+        // finalBitmap을 Mat 객체로 변환
+        Mat imgMat = new Mat();
+        Bitmap bmp32 = finalBitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Utils.bitmapToMat(bmp32, imgMat);
+
+        Rect rect = new Rect(roi_xmin, roi_ymin, roi_xmax - roi_xmin, roi_ymax - roi_ymin);
+        // OpenCV를 사용하여 사각형 그리기
+        Imgproc.rectangle(imgMat, rect, new Scalar(255, 0, 0), 3);
+
+        // Mat 객체를 Bitmap으로 변환하여 ImageView에 표시
+        Utils.matToBitmap(imgMat, finalBitmap);
+        mImageView.setImageBitmap(finalBitmap);
+        if (is_leye && !eye_error) {
+            Imgproc.ellipse(imgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 20, leye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
+        }
+        if (is_reye && !eye_error) {
+            Imgproc.ellipse(imgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 20, reye_h + 20), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
+        }
+
+        Utils.matToBitmap(imgMat, finalBitmap);
+
+        // mBitmap을 새 Bitmap 객체로 복사
+        Bitmap newBitmap = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Bitmap newBitmap2 = mBitmap.copy(Bitmap.Config.ARGB_8888, true);
+        // 새로운 Bitmap을 Mat 객체로 변환
+        Mat newImgMat = new Mat();
+        Utils.bitmapToMat(newBitmap, newImgMat);
+        Mat newImgMat2 = new Mat();
+        Utils.bitmapToMat(newBitmap2, newImgMat2);
+
+        // 조건에 따라 타원을 그리기
+        if (is_leye && !eye_error) {
+            Imgproc.ellipse(newImgMat, new org.opencv.core.Point(leye_x, leye_y), new Size(leye_w + 40, leye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
+        }
+        if (is_reye && !eye_error) {
+            Imgproc.ellipse(newImgMat, new org.opencv.core.Point(reye_x, reye_y), new Size(reye_w + 40, reye_h + 40), 0, 0, 360, new Scalar(255, 255, 255, 255), -1);
+        }
+
+        logMatSize(newImgMat, "newImgMat");  // newImgMat의 해상도 로그 출력
+        saveMatToBinary(newImgMat, "newImgMat");
+
+        int cropXmin = roi_xmin;
+        int cropXmax = roi_xmax;
+        int cropYmin = roi_ymin;
+        int cropYmax = roi_ymax;
+        int cropW = cropXmax - cropXmin;
+        int cropH = cropYmax - cropYmin;
+
+        Rect cropRect = new Rect(cropXmin, cropYmin, cropW, cropH);
+        Mat cropNewImgMat = new Mat(newImgMat, cropRect);
+        Mat cropNewImgMat2 = new Mat(newImgMat2, cropRect);
+//                saveMatToBinary(cropNewImgMat, "cropNewImgMat");
+        logMatSize(cropNewImgMat, "cropNewImgMat");  // cropNewImgMat의 해상도 로그 출력
+
+        // cropNewImgMat 크기와 반 크기 계산
+        int width = cropNewImgMat.cols();
+        int height = cropNewImgMat.rows();
+        int halfWidth = width / 2;
+
+        // 왼쪽 영역 정의
+        Rect leftRect = new Rect(0, 0, halfWidth, height);
+        Mat cropNewLeftMat = new Mat(cropNewImgMat, leftRect);
+        Mat cropNewLeftMat2 = new Mat(cropNewImgMat2, leftRect);
+
+        // 오른쪽 영역 정의
+        Rect rightRect = new Rect(halfWidth, 0, halfWidth, height);
+        Mat cropNewRightMat = new Mat(cropNewImgMat, rightRect);
+        Mat cropNewRightMat2 = new Mat(cropNewImgMat2, rightRect);
+
+        // letterboxImage 함수를 사용하여 이미지 크기 조정
+        Mat newLeftMat = letterboxImage(cropNewLeftMat, new Size(640, 640));
+        Mat newRightMat = letterboxImage(cropNewRightMat, new Size(640, 640));
+        Mat newLeftMat2 = letterboxImage(cropNewLeftMat2, new Size(640, 640));
+        Mat newRightMat2 = letterboxImage(cropNewRightMat2, new Size(640, 640));
+
+
+        // 크롭된 Mat 객체를 다시 Bitmap으로 변환
+        Bitmap cropNewImg = Bitmap.createBitmap(cropNewImgMat.cols(), cropNewImgMat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(cropNewImgMat, cropNewImg);
+        Bitmap cropNewImg2 = Bitmap.createBitmap(cropNewImgMat2.cols(), cropNewImgMat2.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(cropNewImgMat2, cropNewImg2);
+
+        // Mat 객체를 다시 Bitmap으로 변환
+        newLeftBitmap = Bitmap.createBitmap(newLeftMat.cols(), newLeftMat.rows(), Bitmap.Config.ARGB_8888);
+        newRightBitmap = Bitmap.createBitmap(newRightMat.cols(), newRightMat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(newLeftMat, newLeftBitmap);
+        Utils.matToBitmap(newRightMat, newRightBitmap);
+
+
+        newLeftBitmap2 = Bitmap.createBitmap(newLeftMat2.cols(), newLeftMat2.rows(), Bitmap.Config.ARGB_8888);
+        newRightBitmap2 = Bitmap.createBitmap(newRightMat2.cols(), newRightMat2.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(newLeftMat2, newLeftBitmap2);
+        Utils.matToBitmap(newRightMat2, newRightBitmap2);
+
+        // 파일로 저장
+//                saveBitmapToBinary(newLeftBitmap, "newLeftBitmap");
+
+        // ImageView에 새로운 Bitmap을 설정합니다.
+        mImageView.setImageBitmap(newLeftBitmap2);
+        // newLeftBitmap의 가로와 세로 길이를 얻기
+        int bitwidth = newLeftBitmap.getWidth();
+        int bitheight = newLeftBitmap.getHeight();
+
+        // 로그 메시지로 크기 출력
+        Log.d("BitmapSize", "newLeftBitmap: Width = " + bitwidth + ", Height = " + bitheight);
     }
 
     // UnetRunnable 클래스
@@ -598,7 +690,7 @@ public class ParsingActivity extends AppCompatActivity {
 //                saveBitmapToBinary(overlayBitmap1, "overlayBitmap1");
 
                 // 결과 이미지 저장
-                String baseFileName = generateFileNameWithTimestamp("SkinAnalysis"); // 기본 파일 이름에 날짜와 시간을 포함
+                String baseFileName = activity.generateFileNameWithTimestamp(activity.userName);
                 String overlayFileName1 = baseFileName + "_왼쪽_분석";
                 String overlayFileName2 = baseFileName + "_오른쪽_분석";
                 activity.saveBitmapAsPNG(overlayBitmap, overlayFileName1);

@@ -125,15 +125,22 @@ public class MainActivity extends AppCompatActivity {
         // 앨범 버튼 초기화
         mAlbumButton = findViewById(R.id.albumButton);
 
-        // 앨범 버튼 클릭 시 실행될 코드 설정
-        // 갤러리에서 이미지를 선택하고 결과를 받아오기 위해 액티비티 결과 런처를 등록
+        // 앨범에서 이미지를 선택하여 결과를 받는 코드
         mStartForResult = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == Activity.RESULT_OK) {
                 Intent data = result.getData();
                 Uri selectedImage = data.getData();
                 picturePath = getRealPathFromURI(selectedImage);
+
+                // Intent 생성 및 userName 추가
                 Intent parsingIntent = new Intent(MainActivity.this, ParsingActivity.class);
                 parsingIntent.putExtra("IMAGE_PATH", picturePath);
+
+                // 여기에 userName을 Intent에 추가하는 코드를 삽입
+                EditText userNameEditText = findViewById(R.id.userNameEditText);
+                String userName = userNameEditText.getText().toString();
+                parsingIntent.putExtra("USER_NAME", userName); // userName을 ParsingActivity로 전달
+
                 startActivity(parsingIntent);
             }
         });

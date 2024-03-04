@@ -2,10 +2,10 @@
     <string name="app_name">skin_analysis_app</string>
     <string name="an_image">an image</string>
     <string name="image_view">Image View</string>
-    <string name="parsing">Parsing</string>
-    <string name="back">Back</string>
+    <string name="parsing">분석</string>
+    <string name="back">목록</string>
     <string name="run_model">Running the model...</string>
-    <string name="album">앨범</string>
+    <string name="album">앨범</string> 
     <string name="camera">카메라</string>
     <string name="check">확인</string>
     <string name="change">이름 변경</string>
